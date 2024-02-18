@@ -9,4 +9,5 @@ import java.util.ArrayList;
 @Repository
 public interface ResourceRepository extends JpaRepository<Resource, Long> {
     ArrayList<Resource> getResourcesByCollectionId(Long collectionId);
+    Resource getResourceByNameAndCollectionId(String resourceName, Long collectionId);
 }

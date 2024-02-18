@@ -1,11 +1,14 @@
 package com.stegano.steg0vault.sftp;
 
+import com.stegano.steg0vault.exceptions.CreateRemoteCollectionException;
+import com.stegano.steg0vault.exceptions.CreateUserSpaceException;
 import com.stegano.steg0vault.helpers.Base64Helper;
 import com.stegano.steg0vault.models.DTOs.ResourceDTO;
 import com.stegano.steg0vault.models.entities.Collection;
 import com.stegano.steg0vault.models.entities.Resource;
+import com.stegano.steg0vault.models.enums.Constants;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FileUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
 import org.springframework.integration.sftp.session.SftpSession;
 import org.springframework.stereotype.Service;
@@ -15,37 +18,43 @@ import java.util.Base64;
 
 @Service
 @Slf4j
-public class UpAndDownload {
+public class sftpService {
 
+    @Value("${sftpHost}")
+    private String sftpHost;
+    @Value("${sftpPort}")
+    private int sftpPort;
+    @Value("${sftpUser}")
+    private String sftpUser;
+    @Value("${sftpPass}")
+    private String sftpPassword;
     private DefaultSftpSessionFactory sftpFactory() {
         DefaultSftpSessionFactory factory = new DefaultSftpSessionFactory();
-        factory.setHost("0.0.0.0");
-        factory.setPort(22);
+        factory.setHost(sftpHost);
+        factory.setPort(sftpPort);
         factory.setAllowUnknownKeys(true);
-        factory.setUser("dani");
-        factory.setPassword("dani");
+        factory.setUser(sftpUser);
+        factory.setPassword(sftpPassword);
         return factory;
     }
 
-    public void sftpMkdir(String emailAsDirectory) {
-
+    public void createUserSpace(String userSpaceName) {
         SftpSession session = sftpFactory().getSession();
         try {
-            session.mkdir("upload/" + emailAsDirectory);
+            session.mkdir(Constants.SFTP_SERVER_REMOTE_DIRECTORY_NAME + "/" + userSpaceName);
             session.close();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new CreateUserSpaceException();
         }
     }
 
-    public void createCollection(String directory, String collection) {
-
+    public void createCollection(String userDirectory, String collection) {
         SftpSession session = sftpFactory().getSession();
         try {
-            session.mkdir("upload/" + directory + "/" + collection);
+            session.mkdir(Constants.SFTP_SERVER_REMOTE_DIRECTORY_NAME + "/" + userDirectory + "/" + collection);
             session.close();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new CreateRemoteCollectionException();
         }
     }
 
@@ -115,4 +124,28 @@ public class UpAndDownload {
         log.info("up and down success");
         return returnedResources;
     }
+
+
+    public ResourceDTO getResource(String userEmail, String collectionName, Resource resource) {
+        SftpSession session = sftpFactory().getSession();
+
+        try {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            session.read("upload/" + userEmail + "/" + collectionName + "/" + resource.getImageName(), outputStream);
+
+            return ResourceDTO.builder()
+                    .name(resource.getName())
+                    .description(resource.getDescription())
+                    .algorithm(resource.getAlgorithmType().toString())
+                    .type(resource.getImageType().toString())
+                    .isSaved(resource.isSaved())
+                    .imageBytes(Base64Helper.addHeader(Base64.getEncoder().encodeToString(outputStream.toByteArray()), resource))
+                    .build();
+
+        } catch (IOException e) {
+            log.info("up and down error");
+            throw new RuntimeException(e);
+        }
+    }
+
 }
