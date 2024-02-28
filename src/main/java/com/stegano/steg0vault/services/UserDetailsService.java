@@ -24,7 +24,6 @@ public class UserDetailsService implements org.springframework.security.core.use
     public User getCurrentlyLoggedUser() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         String email = principal instanceof UserDetails ? ((UserDetails) principal).getUsername() : principal.toString();
-        log.info("Get currently logged in user with mail: {}", email);
         return (User) loadUserByUsername(email);
     }
 }

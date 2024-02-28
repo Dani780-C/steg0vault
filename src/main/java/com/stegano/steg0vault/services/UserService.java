@@ -13,7 +13,7 @@ import com.stegano.steg0vault.repositories.CollectionRepository;
 import com.stegano.steg0vault.repositories.ResourceRepository;
 import com.stegano.steg0vault.repositories.UserRepository;
 import com.stegano.steg0vault.security.JwtService;
-import com.stegano.steg0vault.sftp.sftpService;
+import com.stegano.steg0vault.sftp.SftpService;
 import com.stegano.steg0vault.stego.algorithms.Algorithm;
 import com.stegano.steg0vault.stego.algorithms.LsbReplacementAlgorithm;
 import com.stegano.steg0vault.stego.image.CoverImage;
@@ -37,7 +37,7 @@ public class UserService {
     private final UserDetailsService userDetailsService;
     private final ResourceRepository resourceRepository;
     private final CollectionRepository collectionRepository;
-    private final sftpService sftpService;
+    private final SftpService sftpService;
 
     public UserService(
             UserRepository userRepository,
@@ -47,7 +47,7 @@ public class UserService {
             UserDetailsService userDetailsService,
             ResourceRepository resourceRepository,
             CollectionRepository collectionRepository,
-            sftpService sftpService) {
+            SftpService sftpService) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
@@ -63,6 +63,7 @@ public class UserService {
         if (usr != null) {
             throw new UserAlreadyExistsException();
         }
+        // TODO: validate password and email format
         User user = User.builder()
                 .email(request.getEmail())
                 .firstName(request.getFirstName())
@@ -95,17 +96,17 @@ public class UserService {
     private void createDefaultResource(User user, Collection collection) {
         Resource resource = Resource.builder()
                 .name(Constants.DEFAULT_RESOURCE_NAME.getValue())
-                .description(Constants.DEFAULT_COLLECTION_DESCRIPTION.getValue())
+                .description(Constants.DEFAULT_RESOURCE_DESCRIPTION.getValue())
                 .imageType(ImageType.PNG)
                 .algorithmType(AlgorithmType.A_TYPE1)
                 .collection(collection)
                 .build();
-        // TODO: HERE I AM
+        // TODO: 1. embed the password in the default resource
+        sftpService.uploadFile(user.getEmail(), collection, resource);
+        resourceRepository.save(resource);
     }
 
-
     public String authenticate(AuthRequest request) {
-
         User user = getUserByEmail(request.getEmail());
         if (user == null) {
             throw new UserNotFoundException();
@@ -176,7 +177,7 @@ public class UserService {
             // TODO: bad request
             throw new RuntimeException();
         }
-        if(secretToEmbed == null || secretToEmbed.equals("")) {
+        if(secretToEmbed == null || secretToEmbed.isEmpty()) {
             // TODO: bad request
             throw new RuntimeException();
         }
@@ -296,7 +297,7 @@ public class UserService {
         return userRepository.getUserByEmail(email);
     }
 
-    public User getUser() {
+    public User getCurrentlyLoggedUser() {
         return this.userDetailsService.getCurrentlyLoggedUser();
     }
 

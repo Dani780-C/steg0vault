@@ -15,7 +15,7 @@ import java.util.ArrayList;
 
 @RestController
 @Slf4j
-@RequestMapping("api/user")
+@RequestMapping("/api/user")
 @CrossOrigin(
     origins = {
             "http://localhost:4200"
@@ -31,20 +31,6 @@ public class UserController {
     public UserController(UserService userService) {
         this.userService = userService;
     }
-
-    @PreAuthorize("hasRole('USER')")
-    @GetMapping
-    public ResponseEntity<User> getUser() {
-        User user = userService.getUser();
-        return new ResponseEntity<>(user, HttpStatus.OK);
-    }
-
-//    @PostMapping("/upload")
-//    @PreAuthorize("hasRole('USER')")
-//    public ResponseEntity<?> uploadImageToFIleSystem(@RequestParam("image") MultipartFile file) throws IOException {
-//        String uploadImage = userService.uploadImageToFileSystem(file);
-//        return ResponseEntity.status(HttpStatus.OK).body(uploadImage);
-//    }
 
     @PreAuthorize("hasRole('USER')")
     @GetMapping(value = "/collection/{collectionName}")

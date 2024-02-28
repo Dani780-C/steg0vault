@@ -6,10 +6,11 @@ import lombok.Getter;
 @AllArgsConstructor
 @Getter
 public enum Constants {
-    SFTP_SERVER_REMOTE_DIRECTORY_NAME("user_spaces"),
+    SFTP_SERVER_REMOTE_DIRECTORY_NAME("upload"),
     DEFAULT_COLLECTION_NAME("Steg0Vault"),
     DEFAULT_COLLECTION_DESCRIPTION("Default collection"),
     DEFAULT_RESOURCE_NAME("Steg0Vault Password"),
-    DEFAULT_RESOURCE_DESCRIPTION("File that embeds the password of the Steg0Vault application");
+    DEFAULT_RESOURCE_DESCRIPTION("File that embeds the password of the Steg0Vault application"),
+    LOCAL_DIRECTORY_NAME("currentUserResources");
     private final String value;
 }

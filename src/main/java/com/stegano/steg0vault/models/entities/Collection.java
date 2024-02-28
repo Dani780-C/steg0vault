@@ -34,5 +34,5 @@ public class Collection {
             mappedBy = "collection",
             cascade = CascadeType.ALL
     )
-    private List<Resource> resources = new ArrayList<>();
+    private final List<Resource> resources = new ArrayList<>();
 }

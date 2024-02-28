@@ -19,10 +19,10 @@ public class ResourceDTO {
     private boolean isSaved;
     private String imageBytes;
     public boolean valid() {
-        return name != null && !name.equals("") &&
-               type != null && !type.equals("") && ImageType.valid(type) &&
+        return name != null && !name.isEmpty() &&
+               type != null && !type.isEmpty() && ImageType.valid(type) &&
                description != null &&
-               algorithm != null && !algorithm.equals("") && AlgorithmType.valid(algorithm) &&
-               imageBytes != null && !imageBytes.equals("");
+               algorithm != null && !algorithm.isEmpty() && AlgorithmType.valid(algorithm) &&
+               imageBytes != null && !imageBytes.isEmpty();
     }
 }

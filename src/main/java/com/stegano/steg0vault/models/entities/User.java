@@ -42,7 +42,7 @@ public class User implements UserDetails {
             mappedBy = "user",
             cascade = CascadeType.ALL
     )
-    private List<com.stegano.steg0vault.models.entities.Collection> collections = new ArrayList<>();
+    private final List<com.stegano.steg0vault.models.entities.Collection> collections = new ArrayList<>();
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
