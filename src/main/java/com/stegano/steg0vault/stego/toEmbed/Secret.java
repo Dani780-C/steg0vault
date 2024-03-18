@@ -1,105 +1,67 @@
 package com.stegano.steg0vault.stego.toEmbed;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 @Getter
-@AllArgsConstructor
 public class Secret {
-    private String message;
-    private int charIndex;
-    private int bitIndex;
-    private byte[] currentCharBitStream = new byte[8];
-
-    public Secret(String message) {
-        this.message = message.length() + "." + message;
-        this.resetBitStreamGenerator();
-    }
+    private String secret;
+    private int index;
+    private char chr;
 
     public Secret() {
-        this.message = "";
-        this.bitIndex = 0;
+        secret = "";
+        index = 0;
+    }
+    public Secret(String secret) {
+        this.secret = secret.length() + "." + secret;
+        this.index = 0;
+    }
+    public int length() { // The secret format to embed: "header.message" [header is the length of the message]
+        return secret.length();
     }
 
-    public char convertBitStreamToChar() {
-        int ord = 0;
-        for(int i = 0; i < 8; i++) {
-            ord += (Math.pow(2, i) * currentCharBitStream[i]);
-        }
-        return (char) ord;
-    }
+    public int getCurrentBit() {
+        if(hasToEmbed()) {
+            int chr = secret.charAt(index / 8);
+            for(int i = 0; i < index % 8; i++)
+                chr /= 2;
 
-    public void setBit(int bit) {
-        if(this.canBuild()) {
-            if(bitIndex < 8) {
-                currentCharBitStream[bitIndex] = (byte) bit;
-                bitIndex += 1;
-            }
-            else {
-                this.message += this.convertBitStreamToChar();
-                bitIndex = 0;
-                this.setBit(bit);
-            }
-        }
-    }
-
-    public void resetBitStreamGenerator() {
-        this.charIndex = 0;
-        this.bitIndex = 0;
-        for(byte i = 0; i < 8; i++) this.currentCharBitStream[i] = 0;
-    }
-    private void setCurrentCharBitStream(char chr) {
-        int value = (byte) chr;
-        int i = 0;
-        while(value != 0) {
-            this.currentCharBitStream[i] = (byte) (value % 2);
-            value /= 2;
-            i += 1;
-        }
-        while(i < 8) {
-            this.currentCharBitStream[i] = 0;
-            i++;
-        }
-    }
-
-    public byte getCurrentBitOfBitStream() {
-        if(charIndex < message.length()) {
-            if(bitIndex == 0) {
-                setCurrentCharBitStream(message.charAt(charIndex));
-            }
-            else if(bitIndex == 8) {
-                bitIndex = 0;
-                charIndex += 1;
-                return getCurrentBitOfBitStream();
-            }
-            if(bitIndex < 8) {
-                bitIndex += 1;
-                return currentCharBitStream[bitIndex - 1];
-            }
+            index += 1;
+            return chr % 2;
         }
         return 0;
     }
 
-    public boolean canBuild() {
-        if(this.message.length() == 0) {
-            return true;
-        }
-        else if(this.message.length() > 10 && !this.message.contains(".")) {
-            return false;
-        }
-        else if(this.message.contains(".")) {
-            String number = (this.message.split("\\."))[0];
-            for(char ch : number.toCharArray()) {
-                if (!Character.isDigit(ch))
-                    return false;
-            }
-            int msgLength = Integer.parseInt(number);
-            return this.message.length() - number.length() - 1 != msgLength;
-        }
-        return true;
+    public boolean hasToEmbed() {
+        return index < secret.length() * 8;
     }
 
-    public boolean hasMessageToEmbed() {
-        return charIndex < this.message.length();
+    public boolean canExtract() {
+        try {
+            int len = Integer.parseInt(secret.split("\\.")[0]);
+            return (secret.length() - String.valueOf(len).length() - 1) < len;
+        } catch (NumberFormatException e) {
+            return true;
+        }
+    }
+
+    public void createSecret(int bit) {
+        if(index % 8 == 0) {
+            this.chr = (char) bit;
+        }
+        else {
+            this.chr = (char) ((bit << (index % 8)) + ((int) this.chr));
+            if(index % 8 == 7) secret += this.chr;
+        }
+        index += 1;
+    }
+
+    public String getRealSecret() {
+        try {
+            int len = Integer.parseInt(secret.split("\\.")[0]);
+            return secret.substring(String.valueOf(len).length() + 1);
+        } catch (NumberFormatException e) {
+            return "";
+        }
     }
 }

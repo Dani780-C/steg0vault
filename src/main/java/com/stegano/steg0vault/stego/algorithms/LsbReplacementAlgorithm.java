@@ -6,30 +6,34 @@ import com.stegano.steg0vault.stego.toEmbed.Secret;
 import java.util.Arrays;
 
 public class LsbReplacementAlgorithm implements Algorithm {
+
+
     @Override
     public void embed(CoverImage coverImage, Secret secret) {
+        if(coverImage.capacity() < secret.length())
+            throw new RuntimeException("The secret is too long to be embedded!");
 
-        for(int i = 0; i < coverImage.getMatrix().height(); i++)
-            for(int j = 0; j < coverImage.getMatrix().width(); j++)
-                for(int k = 0; k < coverImage.getMatrix().channels(); k++) {
-                    if(!secret.hasMessageToEmbed()) break;
-                    coverImage.getMatrix().put(
-                            i, j,
-                            modifyPixel(i, j, k, coverImage, secret.getCurrentBitOfBitStream())
-                    );
+        for(int i = 0; i < coverImage.height(); i++)
+            for(int j = 0; j < coverImage.width(); j++)
+                for(int channel = 0; channel < coverImage.channelsToBeUsed(); channel++) {
+                    if (!secret.hasToEmbed()) {
+                        coverImage.save("currentUserResources/STEG00_LSB.png");
+                        return;
+                    }
+                    coverImage.put(channel, i, j, coverImage.get(channel, i, j) & ~1 | secret.getCurrentBit());
                 }
+        coverImage.save("currentUserResources/STEG00_LSB.png");
     }
 
-    private double[] modifyPixel(int i, int j, int k, CoverImage coverImage, int bit) {
-        for(int c = 0; c < coverImage.getMatrix().channels(); c++)
-            if(c == k) {
-                double[] array = coverImage.getMatrix().get(i, j);
-                System.out.print("BEFORE [ " + i + " " + j + " " + k + " ] => " + Arrays.toString(array));
-                array[k] = ((int) array[k]) & ~1 | bit;
-                System.out.println(" AFTER [ " + i + " " + j + " " + k + " ] => " + Arrays.toString(array) + " BIT " + bit);
-                return array;
-            }
-        return null;
+    @Override
+    public Secret extract(CoverImage coverImage) {
+        Secret secret = new Secret();
+        for (int i = 0; i < coverImage.height(); i++)
+            for (int j = 0; j < coverImage.width(); j++)
+                for (int channel = 0; channel < coverImage.channelsToBeUsed(); channel++) {
+                    if (!secret.canExtract()) return secret;
+                    secret.createSecret(coverImage.get(channel, i, j) % 2);
+                }
+        return secret;
     }
-
 }

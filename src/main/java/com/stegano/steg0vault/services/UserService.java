@@ -215,7 +215,7 @@ public class UserService {
             coverImage.readImage("currentUserResources/" + "StillCover" + resource.getImageName());
             Algorithm algorithm = new LsbReplacementAlgorithm();
             algorithm.embed(coverImage, secret);
-            coverImage.save("currentUserResources/" + resource.getImageName());
+//            coverImage.save("currentUserResources/" + resource.getImageName());
             sftpService.uploadFile(userDetailsService.getCurrentlyLoggedUser().getEmail(), newCollection, resource);
 //            upAndDownload.uploadFileFromBase64(userDetailsService.getCurrentlyLoggedUser().getEmail(), newCollection, resource, resourceDTO.getImageBytes());
             SaveImageLocallyHelper.remove(resource);
@@ -243,7 +243,7 @@ public class UserService {
             coverImage.readImage("currentUserResources/" + "StillCover" + resource.getImageName());
             Algorithm algorithm = new LsbReplacementAlgorithm();
             algorithm.embed(coverImage, secret);
-            coverImage.save("currentUserResources/" + resource.getImageName());
+//            coverImage.save("currentUserResources/" + resource.getImageName());
             sftpService.uploadFile(userDetailsService.getCurrentlyLoggedUser().getEmail(), collection, resource);
 //            upAndDownload.uploadFileFromBase64(userDetailsService.getCurrentlyLoggedUser().getEmail(), collection, resource, resourceDTO.getImageBytes());
             SaveImageLocallyHelper.remove(resource);
@@ -272,7 +272,7 @@ public class UserService {
                 .imageBytes(resourceDTO.getImageBytes())
                 .algorithm(resourceDTO.getAlgorithm())
                 .name(resourceDTO.getName())
-                .message("asddddddddddddddddddddddddddddddddddddddddddddasdasdiau sdiugaisdo uagsidug asgdou gasougdoa gs iudgoa ugsd ")
+                .message("Hardcoded secret!!")
                 .build();
     }
 

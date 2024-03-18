@@ -5,6 +5,7 @@ import com.stegano.steg0vault.models.entities.Resource;
 import com.stegano.steg0vault.models.entities.User;
 import com.stegano.steg0vault.services.UserService;
 import jakarta.validation.Valid;
+import jakarta.websocket.server.PathParam;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,8 +34,8 @@ public class UserController {
     }
 
     @PreAuthorize("hasRole('USER')")
-    @GetMapping(value = "/collection/{collectionName}")
-    public @ResponseBody ResponseEntity<ArrayList<ResourceDTO>> getCollection(@PathVariable String collectionName) {
+    @GetMapping(value = "/collection/")
+    public @ResponseBody ResponseEntity<ArrayList<ResourceDTO>> getCollection(@PathParam("collectionName") String collectionName) {
         log.info("controller");
         return new ResponseEntity<>(userService.getCollection(collectionName), HttpStatus.OK);
     }
@@ -54,14 +55,14 @@ public class UserController {
     }
 
     @PreAuthorize("hasRole('USER')")
-    @GetMapping(value = "/get-resource/{collectionName}/{resourceName}")
-    public @ResponseBody ResponseEntity<ExtractedResourceDTO> getExtractedResource(@PathVariable String collectionName, @PathVariable String resourceName) {
+    @GetMapping(value = "/get-resource/")
+    public @ResponseBody ResponseEntity<ExtractedResourceDTO> getExtractedResource(@PathParam("collectionName") String collectionName, @PathParam("resourceName") String resourceName) {
         return new ResponseEntity<>(userService.getExtractedResource(collectionName, resourceName), HttpStatus.OK);
     }
 
     @PreAuthorize("hasRole('USER')")
-    @GetMapping(value = "/get-resource-info/{collectionName}/{resourceName}")
-    public @ResponseBody ResponseEntity<Resource> getResourceInfo(@PathVariable String collectionName, @PathVariable String resourceName) {
+    @GetMapping(value = "/get-resource-info/")
+    public @ResponseBody ResponseEntity<Resource> getResourceInfo(@PathParam("collectionName") String collectionName, @PathParam("resourceName") String resourceName) {
         return new ResponseEntity<>(userService.getResourceInfo(collectionName, resourceName), HttpStatus.OK);
     }
 }
