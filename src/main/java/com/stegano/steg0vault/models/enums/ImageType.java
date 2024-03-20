@@ -1,23 +1,11 @@
 package com.stegano.steg0vault.models.enums;
 
 public enum ImageType {
-    PNG, JPG, JPEG;
+    PNG;
     public static boolean valid(String type) {
-        return type.equals("image/png") ||
-                type.equals("image/jpg") ||
-                type.equals("image/jpeg");
+        return type.equals("image/png");
     }
     public static ImageType convert(String type) {
-        switch (type) {
-            case "image/jpg" -> {
-                return JPG;
-            }
-            case "image/jpeg" -> {
-                return JPEG;
-            }
-            default -> {
-                return PNG;
-            }
-        }
+        return PNG;
     }
 }

@@ -2,7 +2,7 @@ package com.stegano.steg0vault.services;
 
 import com.stegano.steg0vault.exceptions.UserAlreadyExistsException;
 import com.stegano.steg0vault.exceptions.UserNotFoundException;
-import com.stegano.steg0vault.helpers.SaveImageLocallyHelper;
+import com.stegano.steg0vault.helpers.Helper;
 import com.stegano.steg0vault.models.DTOs.*;
 import com.stegano.steg0vault.models.entities.*;
 import com.stegano.steg0vault.models.enums.AlgorithmType;
@@ -15,17 +15,16 @@ import com.stegano.steg0vault.repositories.UserRepository;
 import com.stegano.steg0vault.security.JwtService;
 import com.stegano.steg0vault.sftp.SftpService;
 import com.stegano.steg0vault.stego.algorithms.Algorithm;
-import com.stegano.steg0vault.stego.algorithms.LsbReplacementAlgorithm;
+import com.stegano.steg0vault.stego.algorithms.LsbMatchingRevisited;
 import com.stegano.steg0vault.stego.image.CoverImage;
 import com.stegano.steg0vault.stego.toEmbed.Secret;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
 
 @Service
 @Slf4j
@@ -58,6 +57,7 @@ public class UserService {
         this.sftpService = sftpService;
     }
 
+    @Transactional
     public String register(RegisterRequest request) {
         User usr = getUserByEmail(request.getEmail());
         if (usr != null) {
@@ -98,7 +98,7 @@ public class UserService {
                 .name(Constants.DEFAULT_RESOURCE_NAME.getValue())
                 .description(Constants.DEFAULT_RESOURCE_DESCRIPTION.getValue())
                 .imageType(ImageType.PNG)
-                .algorithmType(AlgorithmType.A_TYPE1)
+                .algorithmType(AlgorithmType.LSB_REPLACEMENT)
                 .collection(collection)
                 .build();
         // TODO: 1. embed the password in the default resource
@@ -122,175 +122,6 @@ public class UserService {
         );
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
         return jwtService.generateToken(userDetails);
-    }
-
-    public ArrayList<ResourceDTO> getCollection(String collectionName) {
-        Collection collection = collectionRepository.getCollectionByNameAndUserId(collectionName, userDetailsService.getCurrentlyLoggedUser().getId());
-        ArrayList<Resource> resources = resourceRepository.getResourcesByCollectionId(collection.getId());
-        log.info("service");
-        return sftpService.getResources(userDetailsService.getCurrentlyLoggedUser().getEmail(), collectionName, resources);
-    }
-
-    public ArrayList<CollectionResourcesDTO> getCollections() {
-        ArrayList<Collection> collections = collectionRepository.getCollectionsByUserId(userDetailsService.getCurrentlyLoggedUser().getId());
-        ArrayList<CollectionResourcesDTO> collectionResourcesDTOS = new ArrayList<>();
-        for (Collection collection : collections) {
-            ArrayList<Resource> resources = resourceRepository.getResourcesByCollectionId(collection.getId());
-            ArrayList<ResourceNameAndDescriptionDTO> resourceNameAndDescriptionDTOS = new ArrayList<>();
-            for (Resource resource : resources) {
-                resourceNameAndDescriptionDTOS.add(
-                        ResourceNameAndDescriptionDTO.builder()
-                            .name(resource.getName())
-                            .description(resource.getDescription())
-                            .build()
-                );
-            }
-            CollectionDTO collectionDTO = CollectionDTO.builder()
-                    .name(collection.getName())
-                    .description(collection.getCollectionDescription())
-                    .build();
-            collectionResourcesDTOS.add(
-                    CollectionResourcesDTO.builder()
-                            .collectionDTO(collectionDTO)
-                            .resourceNameAndDescriptionDTO(resourceNameAndDescriptionDTOS)
-                            .build()
-            );
-        }
-        return collectionResourcesDTOS;
-    }
-
-    public Boolean postResource(PostResourceDTO postResourceDTO) {
-        CollectionDTO collectionDTO = postResourceDTO.getCollectionDTO();
-        ResourceDTO resourceDTO = postResourceDTO.getResourceDTO();
-        String secretToEmbed = postResourceDTO.getSecretToEmbed();
-        if(collectionDTO == null) {
-            // TODO: bad request
-            throw new RuntimeException();
-        } else if (!collectionDTO.valid()) {
-            // TODO: bad request
-           throw new RuntimeException();
-        }
-        if(resourceDTO == null) {
-            // TODO: bad request
-            throw new RuntimeException();
-        } else if (!resourceDTO.valid()) {
-            // TODO: bad request
-            throw new RuntimeException();
-        }
-        if(secretToEmbed == null || secretToEmbed.isEmpty()) {
-            // TODO: bad request
-            throw new RuntimeException();
-        }
-
-        Collection collection = collectionRepository.getCollectionByNameAndUserId(collectionDTO.getName(), userDetailsService.getCurrentlyLoggedUser().getId());
-        if(collection == null) {
-            // TODO: create new collection
-            ArrayList<Collection> collections = collectionRepository.getCollectionsByUserId(userDetailsService.getCurrentlyLoggedUser().getId());
-            for(Collection collection1 : collections) {
-                if(collection1.getName().equals(collectionDTO.getName())) {
-                    // TODO: bad request
-                    throw new RuntimeException();
-                }
-            }
-            Collection newCollection = Collection.builder()
-                    .name(collectionDTO.getName().trim())
-                    .collectionDescription(collectionDTO.getDescription())
-                    .user(userDetailsService.getCurrentlyLoggedUser())
-                    .build();
-            collectionRepository.save(newCollection);
-            sftpService.createCollection(userDetailsService.getCurrentlyLoggedUser().getEmail(), newCollection.getName());
-            Resource resource = Resource.builder()
-                    .name(resourceDTO.getName().trim())
-                    .isSaved(true)
-                    .imageType(ImageType.convert(resourceDTO.getType()))
-                    .algorithmType(AlgorithmType.convert((resourceDTO.getAlgorithm())))
-                    .description(resourceDTO.getDescription())
-                    .collection(newCollection)
-                    .build();
-            resourceRepository.save(resource);
-//             TODO: embed secretToEmbed into image and save on SFTP server in the proper collection
-            SaveImageLocallyHelper.saveFile(resource, resourceDTO.getImageBytes());
-            Secret secret = new Secret(secretToEmbed);
-            CoverImage coverImage = new CoverImage();
-            coverImage.readImage("currentUserResources/" + "StillCover" + resource.getImageName());
-            Algorithm algorithm = new LsbReplacementAlgorithm();
-            algorithm.embed(coverImage, secret);
-//            coverImage.save("currentUserResources/" + resource.getImageName());
-            sftpService.uploadFile(userDetailsService.getCurrentlyLoggedUser().getEmail(), newCollection, resource);
-//            upAndDownload.uploadFileFromBase64(userDetailsService.getCurrentlyLoggedUser().getEmail(), newCollection, resource, resourceDTO.getImageBytes());
-            SaveImageLocallyHelper.remove(resource);
-        } else {
-            ArrayList<Resource> resources = resourceRepository.getResourcesByCollectionId(collection.getId());
-            for(Resource resource : resources) {
-                if(resource.getName().equals(resourceDTO.getName())) {
-                    // TODO: bad request
-                    throw new RuntimeException();
-                }
-            }
-            Resource resource = Resource.builder()
-                    .name(resourceDTO.getName())
-                    .isSaved(true)
-                    .imageType(ImageType.convert(resourceDTO.getType()))
-                    .algorithmType(AlgorithmType.convert((resourceDTO.getAlgorithm())))
-                    .description(resourceDTO.getDescription())
-                    .collection(collection)
-                    .build();
-            resourceRepository.save(resource);
-            // TODO: embed secretToEmbed into image and save on SFTP server in the proper collection
-            SaveImageLocallyHelper.saveFile(resource, resourceDTO.getImageBytes());
-            Secret secret = new Secret(secretToEmbed);
-            CoverImage coverImage = new CoverImage();
-            coverImage.readImage("currentUserResources/" + "StillCover" + resource.getImageName());
-            Algorithm algorithm = new LsbReplacementAlgorithm();
-            algorithm.embed(coverImage, secret);
-//            coverImage.save("currentUserResources/" + resource.getImageName());
-            sftpService.uploadFile(userDetailsService.getCurrentlyLoggedUser().getEmail(), collection, resource);
-//            upAndDownload.uploadFileFromBase64(userDetailsService.getCurrentlyLoggedUser().getEmail(), collection, resource, resourceDTO.getImageBytes());
-            SaveImageLocallyHelper.remove(resource);
-        }
-
-        return true;
-    }
-
-    public ExtractedResourceDTO getExtractedResource(String collectionName, String resourceName) {
-
-        Collection collection = this.collectionRepository.getCollectionByNameAndUserId(collectionName, userDetailsService.getCurrentlyLoggedUser().getId());
-
-        if(collection == null) {
-            throw new RuntimeException();
-        }
-
-        Resource resource = this.resourceRepository.getResourceByNameAndCollectionId(resourceName, collection.getId());
-
-        if(resource == null) {
-            throw new RuntimeException();
-        }
-
-        ResourceDTO resourceDTO = sftpService.getResource(userDetailsService.getCurrentlyLoggedUser().getEmail(), collection.getName(), resource);
-
-        return ExtractedResourceDTO.builder()
-                .imageBytes(resourceDTO.getImageBytes())
-                .algorithm(resourceDTO.getAlgorithm())
-                .name(resourceDTO.getName())
-                .message("Hardcoded secret!!")
-                .build();
-    }
-
-    public Resource getResourceInfo(String collectionName, String resourceName) {
-
-        Collection collection = this.collectionRepository.getCollectionByNameAndUserId(collectionName, userDetailsService.getCurrentlyLoggedUser().getId());
-
-        if(collection == null) {
-            throw new RuntimeException();
-        }
-
-        Resource resource = this.resourceRepository.getResourceByNameAndCollectionId(resourceName, collection.getId());
-
-        if(resource == null) {
-            throw new RuntimeException();
-        }
-
-        return resource;
     }
 
     public User getUserByEmail(String email) {

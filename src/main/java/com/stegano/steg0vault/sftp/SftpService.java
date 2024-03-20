@@ -2,7 +2,7 @@ package com.stegano.steg0vault.sftp;
 
 import com.stegano.steg0vault.exceptions.CreateRemoteCollectionException;
 import com.stegano.steg0vault.exceptions.CreateUserSpaceException;
-import com.stegano.steg0vault.helpers.Base64Helper;
+import com.stegano.steg0vault.helpers.Helper;
 import com.stegano.steg0vault.models.DTOs.ResourceDTO;
 import com.stegano.steg0vault.models.entities.Collection;
 import com.stegano.steg0vault.models.entities.Resource;
@@ -69,7 +69,6 @@ public class SftpService {
         }
     }
 
-    // TODO: reconsider the base64 encoding
     public ArrayList<ResourceDTO> getResources(String userEmail, String collectionName, ArrayList<Resource> resources) {
         SftpSession session = sftpFactory().getSession();
         ArrayList<ResourceDTO> returnedResources = new ArrayList<>();
@@ -84,16 +83,13 @@ public class SftpService {
                                 .algorithm(rsc.getAlgorithmType().toString())
                                 .type(rsc.getImageType().toString())
                                 .isSaved(rsc.isSaved())
-                                .imageBytes(Base64Helper.addHeader(Base64.getEncoder().encodeToString(outputStream.toByteArray()), rsc))
+                                .imageBytes(Helper.addHeaderBase64(Base64.getEncoder().encodeToString(outputStream.toByteArray()), rsc))
                                 .build()
                 );
-//                System.out.println(Base64.getEncoder().encodeToString(outputStream.toByteArray()));
             }
         } catch (IOException e) {
-            log.info("up and down error");
             throw new RuntimeException(e);
         }
-        log.info("up and down success");
         return returnedResources;
     }
 
@@ -109,7 +105,7 @@ public class SftpService {
                     .algorithm(resource.getAlgorithmType().toString())
                     .type(resource.getImageType().toString())
                     .isSaved(resource.isSaved())
-                    .imageBytes(Base64Helper.addHeader(Base64.getEncoder().encodeToString(outputStream.toByteArray()), resource))
+                    .imageBytes(Helper.addHeaderBase64(Base64.getEncoder().encodeToString(outputStream.toByteArray()), resource))
                     .build();
         } catch (IOException e) {
             throw new RuntimeException(e);

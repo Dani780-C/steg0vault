@@ -11,6 +11,7 @@ public enum Constants {
     DEFAULT_COLLECTION_DESCRIPTION("Default collection"),
     DEFAULT_RESOURCE_NAME("Steg0Vault Password"),
     DEFAULT_RESOURCE_DESCRIPTION("File that embeds the password of the Steg0Vault application"),
-    LOCAL_DIRECTORY_NAME("currentUserResources");
+    LOCAL_DIRECTORY_NAME("currentUserResources"),
+    HEAD_FILE_NAME("StillCover");
     private final String value;
 }

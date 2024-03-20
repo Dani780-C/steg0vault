@@ -25,7 +25,6 @@ public class Secret {
             int chr = secret.charAt(index / 8);
             for(int i = 0; i < index % 8; i++)
                 chr /= 2;
-
             index += 1;
             return chr % 2;
         }
@@ -36,12 +35,12 @@ public class Secret {
         return index < secret.length() * 8;
     }
 
-    public boolean canExtract() {
+    public boolean canCreate() {
         try {
             int len = Integer.parseInt(secret.split("\\.")[0]);
-            return (secret.length() - String.valueOf(len).length() - 1) < len;
+            return (secret.length() - String.valueOf(len).length() - 1) >= len;
         } catch (NumberFormatException e) {
-            return true;
+            return index / 8 > 2000;
         }
     }
 
@@ -61,7 +60,7 @@ public class Secret {
             int len = Integer.parseInt(secret.split("\\.")[0]);
             return secret.substring(String.valueOf(len).length() + 1);
         } catch (NumberFormatException e) {
-            return "";
+            return "There is no embedded message!";
         }
     }
 }

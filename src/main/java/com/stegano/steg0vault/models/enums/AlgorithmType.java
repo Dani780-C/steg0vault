@@ -1,26 +1,22 @@
 package com.stegano.steg0vault.models.enums;
 
 public enum AlgorithmType {
-    A_TYPE1, A_TYPE2, A_TYPE3, A_TYPE4;
+    LSB_REPLACEMENT, LSB_MATCHING, LSB_MATCHING_REVISITED;
     public static boolean valid(String algorithm) {
-        return algorithm.equals("A_TYPE1") ||
-                algorithm.equals("A_TYPE2") ||
-                algorithm.equals("A_TYPE3") ||
-                algorithm.equals("A_TYPE4");
+        return algorithm.equals("LSB_REPLACEMENT") ||
+                algorithm.equals("LSB_MATCHING") ||
+                algorithm.equals("LSB_MATCHING_REVISITED");
     }
     public static AlgorithmType convert(String algorithm) {
         switch (algorithm) {
-            case "A_TYPE2" -> {
-                return A_TYPE2;
+            case "LSB_MATCHING" -> {
+                return LSB_MATCHING;
             }
-            case "A_TYPE3" -> {
-                return A_TYPE3;
-            }
-            case "A_TYPE4" -> {
-                return A_TYPE4;
+            case "LSB_MATCHING_REVISITED" -> {
+                return LSB_MATCHING_REVISITED;
             }
             default -> {
-                return A_TYPE1;
+                return LSB_REPLACEMENT;
             }
         }
     }

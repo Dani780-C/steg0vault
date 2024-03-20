@@ -30,22 +30,18 @@ public class AuthorizationFilter extends OncePerRequestFilter {
 
         if (authHeader == null) {
             filterChain.doFilter(request, response);
-//            System.out.println("no authHeader");
             return;
         }
 
         final String jwtValue = authHeader.split(" ")[1].trim();
         final String userEmail = jwtService.extractUsername(jwtValue);
-//        System.out.println("userEmail: " + userEmail);
 
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-//            System.out.println("filter " + userDetails.getUsername());
             if (jwtService.isTokenValid(jwtValue, userDetails)) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
-//                System.out.println(SecurityContextHolder.getContext().getAuthentication().getPrincipal().toString());
             }
         }
         filterChain.doFilter(request, response);

@@ -17,12 +17,11 @@ public class CoverImage {
         this.matrix = Imgcodecs.imread(imagePath, IMREAD_UNCHANGED);
     }
 
-    public int channelsToBeUsed() {
+    public int channels() {
         return matrix.channels();
-//        return Math.min(matrix.channels(), 3);
     }
     public int capacity() { // NUMBER OF BYTES THAT CAN BE EMBEDDED IN THE COVER MEDIA
-        return (channelsToBeUsed() * this.matrix.width() * this.matrix.height()) / 8;
+        return (channels() * this.matrix.width() * this.matrix.height()) / 8;
     }
 
     public int width() {
