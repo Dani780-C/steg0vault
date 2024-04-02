@@ -16,13 +16,14 @@ import java.util.ArrayList;
 @RestController
 @Slf4j
 @RequestMapping("/api/v1/collection")
-@CrossOrigin(
-        origins = {
-                "http://localhost:4200"
-        },
-        methods = {
-                RequestMethod.GET
-        })
+@CrossOrigin
+//        (
+//        origins = {
+//                "http://localhost:4200"
+//        },
+//        methods = {
+//                RequestMethod.GET
+//        })
 public class CollectionController {
     private final CollectionService collectionService;
 

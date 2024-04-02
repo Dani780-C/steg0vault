@@ -13,6 +13,6 @@ public class CollectionDTO {
     private String name;
     private String description;
     public boolean valid() {
-        return name != null && description != null && !name.equals("");
+        return name != null && description != null && !name.isEmpty();
     }
 }

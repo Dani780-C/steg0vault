@@ -17,13 +17,14 @@ import java.util.ArrayList;
 @RestController
 @Slf4j
 @RequestMapping("/api/v1/user")
-@CrossOrigin(
-    origins = {
-            "http://localhost:4200"
-    },
-    methods = {
-            RequestMethod.POST,
-            RequestMethod.GET,
-            RequestMethod.PATCH
-    })
+@CrossOrigin
+//        (
+//    origins = {
+//            "http://localhost:4200"
+//    },
+//    methods = {
+//            RequestMethod.POST,
+//            RequestMethod.GET,
+//            RequestMethod.PATCH
+//    })
 public class UserController { }

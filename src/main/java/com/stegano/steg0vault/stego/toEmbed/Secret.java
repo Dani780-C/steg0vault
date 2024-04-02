@@ -1,8 +1,10 @@
 package com.stegano.steg0vault.stego.toEmbed;
 
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
+@Setter
 public class Secret {
     private String secret;
     private int index;

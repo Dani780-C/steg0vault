@@ -20,15 +20,16 @@ import java.util.List;
 @RestController
 @Slf4j
 @RequestMapping("/api/v1/resource")
-@CrossOrigin(
-        origins = {
-                "http://localhost:4200"
-        },
-        methods = {
-                RequestMethod.GET,
-                RequestMethod.POST,
-                RequestMethod.PATCH
-        })
+@CrossOrigin
+//        (
+//        origins = {
+//                "http://localhost:4200"
+//        },
+//        methods = {
+//                RequestMethod.GET,
+//                RequestMethod.POST,
+//                RequestMethod.PATCH
+//        })
 public class ResourceController {
 
     private final ResourceService resourceService;

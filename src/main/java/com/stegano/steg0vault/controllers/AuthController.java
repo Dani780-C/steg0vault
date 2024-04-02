@@ -14,13 +14,14 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(
-    origins = {
-            "http://localhost:4200"
-    },
-    methods = {
-            RequestMethod.POST
-    })
+@CrossOrigin
+//        (
+//    origins = {
+//            "http://localhost:4200"
+//    },
+//    methods = {
+//            RequestMethod.POST
+//    })
 public class AuthController {
 
     private final UserService userService;
