@@ -38,6 +38,7 @@ public class CollectionService {
                 collectionName,
                 userDetailsService.getCurrentlyLoggedUser().getId()
         );
+
         ArrayList<Resource> resources = resourceRepository.getResourcesByCollectionId(collection.getId());
         return sftpService.getResources(userDetailsService.getCurrentlyLoggedUser().getEmail(), collectionName, resources);
     }

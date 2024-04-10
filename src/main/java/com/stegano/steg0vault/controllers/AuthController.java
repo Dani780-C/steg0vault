@@ -35,6 +35,6 @@ public class AuthController {
     @PostMapping(value = "/login", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<String> authenticate(@Valid @RequestBody AuthRequest request) {
-        return ResponseEntity.ok("{ \"token\": \"" + userService.authenticate(request) + "\" }");
+        return ResponseEntity.ok("{ \"token\": \"" + userService.authenticate(request) + "\"}");
     }
 }

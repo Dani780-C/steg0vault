@@ -9,11 +9,22 @@ public class Secret {
     private String secret;
     private int index;
     private char chr;
+    private int rollback;
 
     public Secret() {
         secret = "";
         index = 0;
+        rollback = index;
     }
+
+    public void rollback() {
+        this.rollback = this.index;
+    }
+
+    public void commitRollback() {
+        this.index = this.rollback;
+    }
+
     public Secret(String secret) {
         this.secret = secret.length() + "." + secret;
         this.index = 0;

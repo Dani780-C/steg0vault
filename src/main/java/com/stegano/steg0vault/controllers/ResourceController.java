@@ -51,20 +51,31 @@ public class ResourceController {
 
     @PreAuthorize("hasRole('USER')")
     @GetMapping(value = "/info")
-    public @ResponseBody ResponseEntity<Resource> getResourceInfo(@PathParam("collectionName") String collectionName, @PathParam("resourceName") String resourceName) {
+    public @ResponseBody ResponseEntity<ResourceDTO> getResourceInfo(@PathParam("collectionName") String collectionName, @PathParam("resourceName") String resourceName) {
         return new ResponseEntity<>(resourceService.getResourceInfo(collectionName, resourceName), HttpStatus.OK);
     }
 
     @PreAuthorize("hasRole('USER')")
     @PatchMapping(value = "/update")
-    public @ResponseBody ResponseEntity<Boolean> updateResource(@Valid @RequestBody UpdateResourceDTO updateResourceDTO) {
-        return new ResponseEntity<>(resourceService.updateResource(updateResourceDTO), HttpStatus.OK);
+    public @ResponseBody ResponseEntity<Boolean> updateResource(@PathParam("collectionName") String collectionName, @PathParam("resourceName") String resourceName, @Valid @RequestBody UpdateResourceDTO updateResourceDTO) {
+        return new ResponseEntity<>(resourceService.updateResource(collectionName, resourceName, updateResourceDTO), HttpStatus.OK);
     }
 
     @PreAuthorize("hasRole('USER')")
     @PatchMapping(value = "/save")
-    public @ResponseBody ResponseEntity<Boolean> saveResource() {
-        return new ResponseEntity<>(resourceService.saveResource(), HttpStatus.OK);
+    public @ResponseBody ResponseEntity<Boolean> saveResource(@PathParam("collectionName") String collectionName, @PathParam("resourceName") String resourceName) {
+        return new ResponseEntity<>(resourceService.saveResource(collectionName, resourceName), HttpStatus.OK);
     }
 
+    @PreAuthorize("hasRole('USER')")
+    @DeleteMapping(value = "/delete")
+    public @ResponseBody ResponseEntity<Boolean> deleteResource(@PathParam("collectionName") String collectionName, @PathParam("resourceName") String resourceName) {
+        return new ResponseEntity<>(resourceService.deleteResource(collectionName, resourceName), HttpStatus.OK);
+    }
+
+    @PreAuthorize("hasRole('USER')")
+    @DeleteMapping(value = "/delete-coll")
+    public @ResponseBody ResponseEntity<Boolean> deleteCollection(@PathParam("collectionName") String collectionName) {
+        return new ResponseEntity<>(resourceService.deleteCollection(collectionName), HttpStatus.OK);
+    }
 }

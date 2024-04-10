@@ -3,10 +3,7 @@ package com.stegano.steg0vault.models.entities;
 import com.stegano.steg0vault.models.enums.AlgorithmType;
 import com.stegano.steg0vault.models.enums.ImageType;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Entity
 @Table(name="vault_resources")
@@ -14,6 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
+@Setter
 public class Resource {
 
     @Id

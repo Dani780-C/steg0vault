@@ -4,10 +4,12 @@ import com.stegano.steg0vault.stego.image.CoverImage;
 import com.stegano.steg0vault.stego.toEmbed.Secret;
 import nu.pattern.OpenCV;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 class Pixel {
-    int i, j, ch, value;
+    int i, j, ch, value = 0;
     Pixel(int startRow, int startCol, int startCh) {
         this.i = startRow;
         this.j = startCol;
@@ -62,7 +64,8 @@ class Pixel {
         if(value % 2 == 0) value += 1;
         else value -= 1;
 
-        System.out.println("MODIFICAM [I, J, CH]: " + Arrays.toString(pos) + " from " + old_val + " to new " + value);
+//        System.out.println("MODIFICAM [I, J, CH]: " + Arrays.toString(pos) + " from " + old_val + " to new " + value);
+        this.value += 1;
         coverImage.put(pos[2], pos[0], pos[1], value);
     }
 
@@ -72,23 +75,23 @@ public class BinaryHammingCodes implements Algorithm {
     @Override
     public void embed(CoverImage coverImage, Secret secret) {
         // header 12 bytes 12*8
-        int p = 3;
-        int pow_p = 16;
+        int p = 1;
+        int pow_p = 2;
 
-//        while(secret.getRealSecret().length()*8*(pow_p - 1) <= (coverImage.width()*coverImage.height()*coverImage.channels() - 12) * p) {
-//            p += 1;
-//            pow_p *= 2;
-//        }
+        while(secret.getRealSecret().length()*8*(pow_p - 1) <= (coverImage.width()*coverImage.height()*coverImage.channels() - 12) * p) {
+            p += 1;
+            pow_p *= 2;
+        }
 
-//        p = p - 1;
+        p = p - 1;
         String header = secret.getRealSecret().length() + "." + p + ".";
         Secret newSecret = new Secret(header);
         newSecret.setSecret(header);
-
-        System.out.println("P = " + p);
+//
+//        System.out.println("P = " + p);
 //        System.out.println("BlockSize = " + ((pow_p / 2) - 1));
-        System.out.println("Length bits = " + (secret.getRealSecret().length() * 8));
-        System.out.println("Channels: " + coverImage.channels());
+//        System.out.println("Length bits = " + (secret.getRealSecret().length() * 8));
+//        System.out.println("Channels: " + coverImage.channels());
 //        System.out.println("Header = " + header);
 
         // TODO: ##########################################################################3
@@ -120,7 +123,9 @@ public class BinaryHammingCodes implements Algorithm {
 
         StringBuilder bits = new StringBuilder();
 
-//        if(bits_length < p) p = bits_length;
+        if(bits_length < p) p = bits_length;
+
+//        System.out.println("P = " + p);
 
         // TODO: #################################################################################
         int block_index = 0;
@@ -137,26 +142,26 @@ public class BinaryHammingCodes implements Algorithm {
                 block_size -= 1;
             }
 
-            System.out.println("\n----------------------------------------");
-            System.out.println("BLOCK " + block_index);
-            System.out.println("block_size: " + block_size);
+//            System.out.println("\n----------------------------------------");
+//            System.out.println("BLOCK " + block_index);
+//            System.out.println("block_size: " + block_size);
 
             int k = 0;
 
             int[] actPos = pix.getActualPosition();
-            System.out.println("start block index [i, j, ch]: " + Arrays.toString(actPos));
+//            System.out.println("start block index [i, j, ch]: " + Arrays.toString(actPos));
 
             while(k < p) {
 
                 int sum = 0;
 
-                String s1 = "";
-                String s2 = "";
+//                String s1 = "";
+//                String s2 = "";
                 for (int i = 1; i <= block_size; i++) {
                     int bit = i & (1 << k);
-                    s1 += bit + " ";
+//                    s1 += bit + " ";
                     int pixelLSBValue = pix.getValue(coverImage) % 2;
-                    s2 += pixelLSBValue + " ";
+//                    s2 += pixelLSBValue + " ";
                     if((bit & (pixelLSBValue << k)) != 0) sum += 1;
                     pix.moveToNext(coverImage);
                 }
@@ -172,8 +177,8 @@ public class BinaryHammingCodes implements Algorithm {
                     pix.setActualPosition(actPos);
             }
 
-            System.out.println("###########################");
-            for(int i = 0; i < p; i++) System.out.print(cM[i] + " ");
+//            System.out.println("###########################");
+//            for(int i = 0; i < p; i++) System.out.print(cM[i] + " ");
 
             String s3 = "";
             for(int i = 0; i < p; i++) {
@@ -182,17 +187,17 @@ public class BinaryHammingCodes implements Algorithm {
                 cM[i] = Math.abs(cM[i] - b);
                 bits.append(b);
             }
-            System.out.println();
-            System.out.println(s3);
-            System.out.println("------------- minus");
-            for(int i = 0; i < p; i++) System.out.print(cM[i] + " ");
+//            System.out.println();
+//            System.out.println(s3);
+//            System.out.println("------------- minus");
+//            for(int i = 0; i < p; i++) System.out.print(cM[i] + " ");
 
             int nr = 0;
             for(int i = 0; i < p; i++) {
                 nr += (cM[p - i - 1] << (i));
             }
 
-            System.out.println("NUMAR: " + nr);
+//            System.out.println("NUMAR: " + nr);
             if(nr != 0) {
                 pix.switchLSBValue(actPos, nr, coverImage);
             }
@@ -200,7 +205,8 @@ public class BinaryHammingCodes implements Algorithm {
             bits_length -= p;
             block_index += 1;
         }
-        System.out.println("Bits [" + bits.length() + "]: " + bits);
+//        System.out.println("NUMBER OF MODIFICATIONS: " + pix.value);
+//        System.out.println("Bits [" + bits.length() + "]: " + bits);
     }
 
     @Override
@@ -216,9 +222,9 @@ public class BinaryHammingCodes implements Algorithm {
                 }
 
         int length = Integer.parseInt(secret.getSecret().split("\\.")[0]);
-//        int p = Integer.parseInt(secret.getSecret().split("\\.")[1]);
+        int p = Integer.parseInt(secret.getSecret().split("\\.")[1]);
 
-        int p = 3;
+//        int p = 3;
         int bits_length = length * 8;
         int pow_p = 1; int ij = 0;
         while(ij < p) { pow_p = pow_p * 2; ij++;}
@@ -245,16 +251,16 @@ public class BinaryHammingCodes implements Algorithm {
                 block_size -= 1;
             }
 
-            System.out.println("\n----------------------------------------");
-            System.out.println("BLOCK " + block_index);
-            System.out.println("block_size: " + block_size);
+//            System.out.println("\n----------------------------------------");
+//            System.out.println("BLOCK " + block_index);
+//            System.out.println("block_size: " + block_size);
 
 
             String s1 = "";
             int k = 0;
 
             int[] actPos = pix.getActualPosition();
-            System.out.println("start block index [i, j, ch]: " + Arrays.toString(actPos));
+//            System.out.println("start block index [i, j, ch]: " + Arrays.toString(actPos));
 
 
             while(k < p) {
@@ -278,7 +284,7 @@ public class BinaryHammingCodes implements Algorithm {
                     pix.setActualPosition(actPos);
             }
 
-            System.out.println("BITS: " +  s1);
+//            System.out.println("BITS: " +  s1);
 
             for(int i = s1.length() - 1; i > -1; i--) {
 //                newSecret.createSecret(s1.charAt(i));
@@ -295,31 +301,52 @@ public class BinaryHammingCodes implements Algorithm {
                 newSecret.createSecret(0);
             else
                 newSecret.createSecret(1);
-        System.out.println("Bits [" + bits.length() + "]: " + bits);
+//        System.out.println("Bits [" + bits.length() + "]: " + bits);
+        newSecret.setSecret(newSecret.getSecret().length() + "." + newSecret.getSecret());
         return newSecret;
     }
 
-    public static void main(String[] args) {
-
-
-        OpenCV.loadLocally();
-        Secret secret = new Secret("test 123");
-        CoverImage coverImage = new CoverImage();
-        coverImage.readImage("/home/daniel/licenta/steg0vault/currentUserResources/tree.png");
-
-        Algorithm algorithm = new BinaryHammingCodes();
-        algorithm.embed(coverImage, secret);
-
-        coverImage.save("/home/daniel/licenta/steg0vault/currentUserResources/HammingCodes.png");
-
-        CoverImage coverImage1 = new CoverImage();
-        coverImage1.readImage("/home/daniel/licenta/steg0vault/currentUserResources/HammingCodes.png");
-
-        Algorithm algorithm1 = new BinaryHammingCodes();
-        Secret secret1 = algorithm1.extract(coverImage1);
-
-        System.out.println(secret1.getSecret());
-
-    }
+//    public static void main(String[] args) {
+//
+//
+//        OpenCV.loadLocally();
+//
+//        List<String> tests = new ArrayList<>();
+//
+//        tests.add("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec id metus imperdiet, rhoncus purus sed, vulputate diam. Integer sodales, quam sit amet sodales hendrerit, turpis erat auctor felis, non sagittis tellus sapien eu metus. Nulla pharetra accumsan viverra. Sed semper felis et nisi mattis commodo. Donec nulla lacus, varius nec quam ac, volutpat consequat magna. Praesent faucibus non enim id gravida. Praesent purus quam, commodo eget ipsum quis, rhoncus iaculis felis. Integer a quam in leo porttitor mattis et eget odio. Donec vehicula eros vel vehicula feugiat. Duis tincidunt, eros vitae ultrices finibus, augue augue volutpat turpis, fringilla imperdiet velit leo quis nulla. Nunc at justo efficitur, tristique arcu ut, pharetra diam. Fusce tempus tristique turpis, sed feugiat neque. Aenean nisl nunc, porta vitae enim vel, pretium imperdiet ex. Sed non elit maximus, malesuada orci in, luctus neque. Donec lacus ex, lobortis eget egestas et, placerat vitae metus. Fusce consequat nibh felis, nec facilisis lorem mollis sit amet.");
+//
+//        tests.add("1");
+//        tests.add("");
+//
+//        Secret secret = new Secret(tests.get(2));
+//        CoverImage coverImage = new CoverImage();
+//        coverImage.readImage("/home/daniel/licenta/steg0vault/currentUserResources/xxl.png");
+//
+//        Algorithm algorithm = new BinaryHammingCodes();
+//
+//        long startTime, stopTime;
+//
+//        startTime = System.currentTimeMillis();
+//        algorithm.embed(coverImage, secret);
+//        stopTime = System.currentTimeMillis();
+//
+//        System.out.println("EMBEDDING DURATION " + String.valueOf((stopTime - startTime) / 1000));
+//
+//        coverImage.save("/home/daniel/licenta/steg0vault/currentUserResources/HammingCodes.png");
+//
+//        CoverImage coverImage1 = new CoverImage();
+//        coverImage1.readImage("/home/daniel/licenta/steg0vault/currentUserResources/HammingCodes.png");
+//
+//        Algorithm algorithm1 = new BinaryHammingCodes();
+//
+//        startTime = System.currentTimeMillis();
+//        Secret secret1 = algorithm1.extract(coverImage1);
+//        stopTime = System.currentTimeMillis();
+//
+//        System.out.println("EXTRACTION DURATION " + String.valueOf((stopTime - startTime) / 1000));
+//
+//        System.out.println(secret1.getSecret());
+//
+//    }
 
 }

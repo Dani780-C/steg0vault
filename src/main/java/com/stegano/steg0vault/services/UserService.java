@@ -72,8 +72,8 @@ public class UserService {
                 .roleType(RoleType.USER)
                 .build();
         this.createUserSpace(user);
-        Collection collection = this.createDefaultCollection(user);
-        this.createDefaultResource(user, collection);
+//        Collection collection = this.createDefaultCollection(user);
+//        this.createDefaultResource(user, collection);
         return jwtService.generateToken(user);
     }
 

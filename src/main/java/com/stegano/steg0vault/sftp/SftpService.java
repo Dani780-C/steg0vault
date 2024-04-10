@@ -112,4 +112,23 @@ public class SftpService {
         }
     }
 
+    public void deleteFile(String userDirectory, Collection collection, String filename) {
+        SftpSession session = sftpFactory().getSession();
+        try {
+            session.remove(Constants.SFTP_SERVER_REMOTE_DIRECTORY_NAME.getValue() + "/" + userDirectory + "/" + collection.getName() + "/" + filename);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void deleteCollection(String userDirectory, Collection collection) {
+        SftpSession session = sftpFactory().getSession();
+        try {
+//            session.remove(Constants.SFTP_SERVER_REMOTE_DIRECTORY_NAME.getValue() + "/" + userDirectory + "/" + collection.getName() + "/" + filename);
+            session.rmdir(Constants.SFTP_SERVER_REMOTE_DIRECTORY_NAME.getValue() + "/" + userDirectory + "/" + collection.getName());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }

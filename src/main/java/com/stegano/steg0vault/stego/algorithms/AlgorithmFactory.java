@@ -12,6 +12,15 @@ public class AlgorithmFactory {
             case LSB_MATCHING_REVISITED -> {
                 return new LsbMatchingRevisited();
             }
+            case BINARY_HAMMING_CODES -> {
+                return new BinaryHammingCodes();
+            }
+            case RANDOM_PIXEL_SELECTION -> {
+                return new RandomPixelAndBitSelection();
+            }
+            case MULTI_BIT_PLANE -> {
+                return new MultiBitPlane();
+            }
             default -> {
                 return new LsbReplacement();
             }
