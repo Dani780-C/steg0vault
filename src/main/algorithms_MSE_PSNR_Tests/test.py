@@ -44,28 +44,28 @@ def psnr(cover_image, stego_image):
 
 if __name__ == "__main__":
 
-    # for original_image_name in original_test_image_names.keys():
+    for original_image_name in original_test_image_names.keys():
+
+        print("Test ----------> " + original_image_name)
+        cover_image = cv2.imread("/home/daniel/licenta/steg0vault/src/main/algorithms_MSE_PSNR_Tests/test_images/" + original_test_image_names[original_image_name])
+
+        for stego_image_name in stego_images[original_image_name]:
+            stego_image = cv2.imread("/home/daniel/licenta/steg0vault/src/main/algorithms_MSE_PSNR_Tests/test_images/STEGO_IMAGES/" + original_image_name + "_stego/" + stego_image_name.strip())
+
+            MSE_VALUE = mse(cover_image, stego_image)
+            PSNR_VALUE = psnr(cover_image, stego_image)
+            print(stego_image_name + " MSE: " + str(MSE_VALUE) + " | PSNR: " + str(PSNR_VALUE))
+
+    # for i in range(1, 7):
+    # cover_image = cv2.imread("/home/daniel/licenta/steg0vault/src/main/algorithms_MSE_PSNR_Tests/test_images/Lenna_test_image.png")
+    # stego_image = cv2.imread("/home/daniel/licenta/steg0vault/src/main/algorithms_MSE_PSNR_Tests/test_images/hasd.png")
     #
-    #     print("Test ----------> " + original_image_name)
-    #     cover_image = cv2.imread("/home/daniel/licenta/steg0vault/src/main/algorithms_MSE_PSNR_Tests/test_images/" + original_test_image_names[original_image_name])
+    # print(mse(cover_image, stego_image))
     #
-    #     for stego_image_name in stego_images[original_image_name]:
-    #         stego_image = cv2.imread("/home/daniel/licenta/steg0vault/src/main/algorithms_MSE_PSNR_Tests/test_images/STEGO_IMAGES/" + original_image_name + "_stego/" + stego_image_name.strip())
+    # diff = np.subtract(cover_image, stego_image)
     #
-    #         MSE_VALUE = mse(cover_image, stego_image)
-    #         PSNR_VALUE = psnr(cover_image, stego_image)
-    #         print(stego_image_name + " MSE: " + str(MSE_VALUE) + " | PSNR: " + str(PSNR_VALUE))
-
-    for i in range(1, 7):
-        cover_image = cv2.imread("/home/daniel/licenta/steg0vault/src/main/algorithms_MSE_PSNR_Tests/test_images/Lenna_test_image.png", cv2.IMREAD_GRAYSCALE)
-        stego_image = cv2.imread("/home/daniel/licenta/steg0vault/src/main/algorithms_MSE_PSNR_Tests/test_images/plane" + str(i) + ".png", cv2.IMREAD_GRAYSCALE)
-
-        print(mse(cover_image, stego_image))
-
-        diff = np.subtract(cover_image, stego_image)
-
-        cv2.imshow('Difference', diff)
-
-        # waiting using waitKey method
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+    # cv2.imshow('Difference', diff)
+    #
+    # # waiting using waitKey method
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
