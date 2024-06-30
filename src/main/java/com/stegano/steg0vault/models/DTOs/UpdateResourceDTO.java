@@ -6,9 +6,8 @@ import lombok.Setter;
 @Getter
 @Setter
 public class UpdateResourceDTO {
-
     private String name;
     private String description;
-    private String algorithm;
+    private String newCollection;
     private String newSecret;
 }

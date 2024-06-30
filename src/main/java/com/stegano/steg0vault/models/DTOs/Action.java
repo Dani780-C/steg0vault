@@ -7,9 +7,7 @@ import lombok.Setter;
 @Setter
 @Getter
 @Builder
-public class ResourceNameAndDescriptionDTO {
+public class Action {
     private String name;
-    private String description;
-    private String createdAt;
-    private String modifiedAt;
+    private String info;
 }

@@ -8,7 +8,6 @@ import lombok.Getter;
 public enum ErrorCode {
     USER_NOT_FOUND(0),
     USER_ALREADY_EXISTS(1);
-
     private final int code;
 }
 

@@ -4,12 +4,12 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
-@Setter
+import java.util.List;
+
 @Getter
+@Setter
 @Builder
-public class ResourceNameAndDescriptionDTO {
+public class CollectionAction {
     private String name;
-    private String description;
-    private String createdAt;
-    private String modifiedAt;
+    private List<Action> actionList;
 }

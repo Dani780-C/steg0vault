@@ -1,6 +1,5 @@
 package com.stegano.steg0vault.configs;
 
-import com.stegano.steg0vault.models.enums.RoleType;
 import com.stegano.steg0vault.security.AuthorizationFilter;
 import com.stegano.steg0vault.services.UserDetailsService;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +13,6 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-//import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -38,9 +36,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests()
                 .requestMatchers("/api/v1/auth/login").permitAll()
                 .requestMatchers("/api/v1/auth/register").permitAll()
-                .requestMatchers("/api/v1/user/**").hasRole("USER")
-                .requestMatchers("/api/v1/resource/**").hasRole("USER")
-                .requestMatchers("/api/v1/collection/**").hasRole("USER")
+                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/v1/user/**").permitAll()
+                .requestMatchers("/api/v1/forgot-pass/**").permitAll()
+                .requestMatchers("/api/v1/resource/**").permitAll()
+                .requestMatchers("/api/v1/collection/**").permitAll()
                 .anyRequest()
                 .authenticated()
                 .and()

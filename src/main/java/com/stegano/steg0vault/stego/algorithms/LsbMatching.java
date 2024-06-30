@@ -26,8 +26,8 @@ public class LsbMatching implements Algorithm {
                             coverImage.put(channel, i, j,value - 1);
                         else {
                             Random random = new Random();
-                            int randomValue = random.nextInt(100 - 50 + 1) + 50;
-                            if(randomValue <= 75)
+                            int randomValue = random.nextInt() % 10000;
+                            if(randomValue <= 5000)
                                 coverImage.put(channel, i, j,value - 1);
                             else
                                 coverImage.put(channel, i, j,value + 1);

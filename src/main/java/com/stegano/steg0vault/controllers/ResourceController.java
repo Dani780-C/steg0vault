@@ -1,12 +1,8 @@
 package com.stegano.steg0vault.controllers;
 
-import com.stegano.steg0vault.models.DTOs.ExtractedResourceDTO;
-import com.stegano.steg0vault.models.DTOs.PostResourceDTO;
-import com.stegano.steg0vault.models.DTOs.ResourceDTO;
-import com.stegano.steg0vault.models.DTOs.UpdateResourceDTO;
-import com.stegano.steg0vault.models.entities.Resource;
-import com.stegano.steg0vault.models.entities.User;
+import com.stegano.steg0vault.models.DTOs.*;
 import com.stegano.steg0vault.services.ResourceService;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import jakarta.websocket.server.PathParam;
 import lombok.extern.slf4j.Slf4j;
@@ -21,15 +17,6 @@ import java.util.List;
 @Slf4j
 @RequestMapping("/api/v1/resource")
 @CrossOrigin
-//        (
-//        origins = {
-//                "http://localhost:4200"
-//        },
-//        methods = {
-//                RequestMethod.GET,
-//                RequestMethod.POST,
-//                RequestMethod.PATCH
-//        })
 public class ResourceController {
 
     private final ResourceService resourceService;
@@ -43,6 +30,12 @@ public class ResourceController {
     public @ResponseBody ResponseEntity<Boolean> postResource(@Valid @RequestBody PostResourceDTO postResourceDTO) {
         return new ResponseEntity<>(resourceService.postResource(postResourceDTO), HttpStatus.OK);
     }
+
+    @PostMapping(value = "/try-to-extract")
+    public @ResponseBody ResponseEntity<ExtractedResourceDTO> tryToExtractResource(@RequestBody PostResourceDTO postResourceDTO) {
+        return new ResponseEntity<>(resourceService.tryToExtract(postResourceDTO), HttpStatus.OK);
+    }
+
     @PreAuthorize("hasRole('USER')")
     @GetMapping(value = "/extract")
     public @ResponseBody ResponseEntity<ExtractedResourceDTO> getResourceAndSecret(@PathParam("collectionName") String collectionName, @PathParam("resourceName") String resourceName) {
@@ -56,15 +49,27 @@ public class ResourceController {
     }
 
     @PreAuthorize("hasRole('USER')")
+    @GetMapping(value = "/algs/all")
+    public @ResponseBody ResponseEntity<List<String>> getResourceInfo() {
+        return new ResponseEntity<>(resourceService.getAllAlgs(), HttpStatus.OK);
+    }
+
+    @RolesAllowed({"USER", "ADMIN"})
+    @GetMapping(value = "/get-image")
+    public @ResponseBody ResponseEntity<ImageBytes> getImage(@PathParam("collectionName") String collectionName, @PathParam("resourceName") String resourceName) {
+        return new ResponseEntity<ImageBytes>(resourceService.getImage(collectionName, resourceName), HttpStatus.OK);
+    }
+
+    @PreAuthorize("hasRole('USER')")
     @PatchMapping(value = "/update")
     public @ResponseBody ResponseEntity<Boolean> updateResource(@PathParam("collectionName") String collectionName, @PathParam("resourceName") String resourceName, @Valid @RequestBody UpdateResourceDTO updateResourceDTO) {
         return new ResponseEntity<>(resourceService.updateResource(collectionName, resourceName, updateResourceDTO), HttpStatus.OK);
     }
 
     @PreAuthorize("hasRole('USER')")
-    @PatchMapping(value = "/save")
-    public @ResponseBody ResponseEntity<Boolean> saveResource(@PathParam("collectionName") String collectionName, @PathParam("resourceName") String resourceName) {
-        return new ResponseEntity<>(resourceService.saveResource(collectionName, resourceName), HttpStatus.OK);
+    @PatchMapping(value = "/update/coll")
+    public @ResponseBody ResponseEntity<Boolean> updateCollection(@PathParam("collectionName") String collectionName, @Valid @RequestBody UpdateCollectionDTO updateCollectionDTO) {
+        return new ResponseEntity<>(resourceService.updateCollection(collectionName, updateCollectionDTO), HttpStatus.OK);
     }
 
     @PreAuthorize("hasRole('USER')")

@@ -2,11 +2,12 @@ package com.stegano.steg0vault.services;
 
 import com.stegano.steg0vault.helpers.Helper;
 import com.stegano.steg0vault.models.DTOs.*;
+import com.stegano.steg0vault.models.entities.AlgorithmEntity;
 import com.stegano.steg0vault.models.entities.Collection;
 import com.stegano.steg0vault.models.entities.Resource;
-import com.stegano.steg0vault.models.enums.AlgorithmType;
 import com.stegano.steg0vault.models.enums.Constants;
 import com.stegano.steg0vault.models.enums.ImageType;
+import com.stegano.steg0vault.repositories.AlgorithmRepository;
 import com.stegano.steg0vault.repositories.CollectionRepository;
 import com.stegano.steg0vault.repositories.ResourceRepository;
 import com.stegano.steg0vault.sftp.SftpService;
@@ -18,6 +19,8 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,17 +32,20 @@ public class ResourceService {
     private final SftpService sftpService;
     private final UserDetailsService userDetailsService;
     private final CollectionRepository collectionRepository;
+    private final AlgorithmRepository algorithmRepository;
 
     public ResourceService(
             ResourceRepository resourceRepository,
             SftpService sftpService,
             UserDetailsService userDetailsService,
-            CollectionRepository collectionRepository
+            CollectionRepository collectionRepository,
+            AlgorithmRepository algorithmRepository
     ) {
         this.resourceRepository = resourceRepository;
         this.sftpService = sftpService;
         this.userDetailsService = userDetailsService;
         this.collectionRepository = collectionRepository;
+        this.algorithmRepository = algorithmRepository;
     }
 
     @Transactional
@@ -66,25 +72,28 @@ public class ResourceService {
             throw new RuntimeException();
         }
 
-        Collection collection = collectionRepository.getCollectionByNameAndUserId(collectionDTO.getName(), userDetailsService.getCurrentlyLoggedUser().getId());
+        Collection collection = collectionRepository.getCollectionByNameAndUserIdAndDeletedAtIsNull(collectionDTO.getName().trim(), userDetailsService.getCurrentlyLoggedUser().getId());
+
+        AlgorithmEntity algorithm = algorithmRepository.findAlgorithmEntityByName(resourceDTO.getAlgorithm().trim());
+
+        if(algorithm == null) {
+            throw new RuntimeException();
+        }
 
         if(collection == null) {
 
             Collection newCollection = Collection.builder()
                     .name(collectionDTO.getName().trim())
-                    .collectionDescription(collectionDTO.getDescription())
+                    .collectionDescription(collectionDTO.getDescription().trim())
                     .user(userDetailsService.getCurrentlyLoggedUser())
                     .build();
 
             collectionRepository.save(newCollection);
 
-            sftpService.createCollection(userDetailsService.getCurrentlyLoggedUser().getEmail(), newCollection.getName());
-
             Resource resource = Resource.builder()
                     .name(resourceDTO.getName().trim())
-                    .isSaved(false)
                     .imageType(ImageType.convert(resourceDTO.getType()))
-                    .algorithmType(AlgorithmType.convert((resourceDTO.getAlgorithm())))
+                    .algorithm(algorithm)
                     .description(resourceDTO.getDescription())
                     .collection(newCollection)
                     .build();
@@ -92,44 +101,91 @@ public class ResourceService {
             resourceRepository.save(resource);
 
 
-            Helper.saveFile(resource, resourceDTO.getImageBytes());
-            embedAndUploadOnSftpServer(newCollection, resource, secretToEmbed);
-            Helper.removeFile(resource);
+            Helper.saveFile(resource, resourceDTO.getImageBytes(), true);
+            embedAndUploadOnSftpServer(newCollection, resource, secretToEmbed, true);
+            Helper.removeFile(resource, true);
 
             return true;
         }
 
         ArrayList<Resource> resources = resourceRepository.getResourcesByCollectionId(collection.getId());
         for(Resource resource : resources) {
-            if(resource.getName().equals(resourceDTO.getName())) {
+            if(resource.getDeletedAt() == null && resource.getName().equals(resourceDTO.getName().trim())) {
                 throw new RuntimeException();
             }
         }
         Resource resource = Resource.builder()
-                .name(resourceDTO.getName())
-                .isSaved(false)
+                .name(resourceDTO.getName().trim())
                 .imageType(ImageType.convert(resourceDTO.getType()))
-                .algorithmType(AlgorithmType.convert((resourceDTO.getAlgorithm())))
-                .description(resourceDTO.getDescription())
+                .algorithm(algorithm)
+                .description(resourceDTO.getDescription().trim())
                 .collection(collection)
                 .build();
 
         resourceRepository.save(resource);
 
-        Helper.saveFile(resource, resourceDTO.getImageBytes());
-        embedAndUploadOnSftpServer(collection, resource, secretToEmbed);
-        Helper.removeFile(resource);
+        Helper.saveFile(resource, resourceDTO.getImageBytes(), true);
+        embedAndUploadOnSftpServer(collection, resource, secretToEmbed, false);
+        Helper.removeFile(resource, true);
 
         return true;
     }
 
-    void embedAndUploadOnSftpServer(Collection collection, Resource resource, String secretToEmbed) {
+    public ExtractedResourceDTO tryToExtract(PostResourceDTO postResourceDTO) {
+        if(postResourceDTO == null)
+            throw new RuntimeException();
+
+        ResourceDTO resourceDTO = postResourceDTO.getResourceDTO();
+
+        if(resourceDTO == null)
+            throw new RuntimeException();
+
+
+        Resource resource = Resource.builder()
+                .name("TryToExtract")
+                .imageType(ImageType.convert(resourceDTO.getType()))
+                .build();
+
+        Helper.saveFile(resource, resourceDTO.getImageBytes(), true);
+
+        CoverImage coverImage = new CoverImage();
+        coverImage.readImage(Constants.LOCAL_DIRECTORY_NAME.getValue() + "/" + Constants.HEAD_FILE_NAME.getValue() + resource.getImageName());
+
+        List<AlgorithmEntity> algorithmEntities = algorithmRepository.findAll();
+
+        for (AlgorithmEntity algorithmEntity : algorithmEntities) {
+            Algorithm algorithm = AlgorithmFactory.createAlgorithm(algorithmEntity.getName());
+            try {
+                Secret secret = algorithm.extract(coverImage);
+                if (!secret.getDecryptedMessage().equals("There is no embedded message!")
+                   && !secret.getDecryptedMessage().equals("Cannot decrypt")) {
+                    Helper.removeFile(resource, true);
+                    return ExtractedResourceDTO.builder()
+                            .algorithm(algorithmEntity.getName())
+                            .message(secret.getDecryptedMessage())
+                            .imageBytes("")
+                            .build();
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        Helper.removeFile(resource, true);
+        return ExtractedResourceDTO.builder()
+                .algorithm("NONE")
+                .message("Sorry! Cannot find a secret in this image!")
+                .imageBytes("")
+                .build();
+    }
+
+    void embedAndUploadOnSftpServer(Collection collection, Resource resource, String secretToEmbed, boolean newColl) {
         Secret secret = new Secret(secretToEmbed);
         CoverImage coverImage = new CoverImage();
         coverImage.readImage(Constants.LOCAL_DIRECTORY_NAME.getValue() + "/" + Constants.HEAD_FILE_NAME.getValue() + resource.getImageName());
-        Algorithm algorithm = AlgorithmFactory.createAlgorithm(resource.getAlgorithmType());
+        Algorithm algorithm = AlgorithmFactory.createAlgorithm(resource.getAlgorithm().getName());
         algorithm.embed(coverImage, secret);
         coverImage.save(Constants.LOCAL_DIRECTORY_NAME.getValue() + "/" + resource.getImageName());
+        if(newColl) sftpService.createCollection(userDetailsService.getCurrentlyLoggedUser().getEmail(), collection.getName());
         sftpService.uploadFile(userDetailsService.getCurrentlyLoggedUser().getEmail(), collection, resource);
     }
 
@@ -138,14 +194,14 @@ public class ResourceService {
         if(collectionName == null || resourceName == null)
             throw new RuntimeException();
 
-        Collection collection = this.collectionRepository.getCollectionByNameAndUserId(
+        Collection collection = this.collectionRepository.getCollectionByNameAndUserIdAndDeletedAtIsNull(
                 collectionName, userDetailsService.getCurrentlyLoggedUser().getId());
 
         if(collection == null) {
             throw new RuntimeException();
         }
 
-        Resource resource = this.resourceRepository.getResourceByNameAndCollectionId(resourceName, collection.getId());
+        Resource resource = this.resourceRepository.getResourceByNameAndCollectionIdAndDeletedAtIsNull(resourceName, collection.getId());
 
         if(resource == null) {
             throw new RuntimeException();
@@ -153,143 +209,213 @@ public class ResourceService {
 
         ResourceDTO resourceDTO = sftpService.getResource(userDetailsService.getCurrentlyLoggedUser().getEmail(), collection.getName(), resource);
 
-        Helper.saveFile(resource, resourceDTO.getImageBytes());
+        Helper.saveFile(resource, resourceDTO.getImageBytes(), true);
 
         CoverImage coverImage = new CoverImage();
         coverImage.readImage(Constants.LOCAL_DIRECTORY_NAME.getValue() + "/" + Constants.HEAD_FILE_NAME.getValue() + resource.getImageName());
-        Algorithm algorithm = AlgorithmFactory.createAlgorithm(resource.getAlgorithmType());
+
+        Algorithm algorithm = AlgorithmFactory.createAlgorithm(resource.getAlgorithm().getName());
         Secret secret = algorithm.extract(coverImage);
 
-        Helper.removeFile(resource);
+        Helper.removeFile(resource, true);
 
         return ExtractedResourceDTO.builder()
                 .imageBytes(resourceDTO.getImageBytes())
                 .algorithm(resourceDTO.getAlgorithm())
                 .name(resourceDTO.getName())
-                .message(secret.getRealSecret())
+                .message(secret.getDecryptedMessage())
                 .build();
     }
 
     @Transactional
     public boolean updateResource(String collectionName, String resourceName, UpdateResourceDTO updateResourceDTO) {
-        System.out.println(updateResourceDTO.getName());
-        System.out.println(updateResourceDTO.getDescription());
-        System.out.println(updateResourceDTO.getNewSecret());
-        System.out.println(updateResourceDTO.getAlgorithm());
 
-        // TODO: update resource
-        if(collectionName == null || resourceName == null)
+        if(collectionName == null || resourceName == null || updateResourceDTO == null)
             throw new RuntimeException();
 
-        Collection collection = collectionRepository.getCollectionByNameAndUserId(collectionName, userDetailsService.getCurrentlyLoggedUser().getId());
+        Collection collection = collectionRepository.getCollectionByNameAndUserIdAndDeletedAtIsNull(
+                collectionName,
+                userDetailsService.getCurrentlyLoggedUser().getId()
+        );
 
         if(collection == null)
             throw new RuntimeException();
 
-        Resource resource = resourceRepository.getResourceByNameAndCollectionId(resourceName, collection.getId());
+        Resource resource = resourceRepository.getResourceByNameAndCollectionIdAndDeletedAtIsNull(
+                resourceName.trim(),
+                collection.getId()
+        );
 
         if(resource == null)
             throw new RuntimeException();
-        String oldFilename = resource.getImageName();
 
-        ResourceDTO resourceDTO = sftpService.getResource(userDetailsService.getCurrentlyLoggedUser().getEmail(), collection.getName(), resource);
+        if(updateResourceDTO.getNewCollection() == null)
+            throw new RuntimeException();
 
-//        if(updateResourceDTO.getDescription() != null)
-//            resource.setDescription(updateResourceDTO.getDescription());
-//
-//        if(updateResourceDTO.getName() != null && !updateResourceDTO.getName().isEmpty()) {
-//            List<Resource> resourceList = resourceRepository.getResourcesByCollectionId(collection.getId());
-//            int i = 0;
-//            while(i < resourceList.size() && !(resourceList.get(i).getName().trim().equals(updateResourceDTO.getName().trim()))) i++;
-//            if(i == resourceList.size())
-//                resource.setName(updateResourceDTO.getName().trim());
-//        }
+        if(!updateResourceDTO.getNewCollection().equals(collection.getName())) {
+            Collection collectionToMove = collectionRepository.getCollectionByNameAndUserIdAndDeletedAtIsNull(
+                    updateResourceDTO.getNewCollection(),
+                    userDetailsService.getCurrentlyLoggedUser().getId()
+            );
 
-        Secret secret = new Secret();
-        if(updateResourceDTO.getAlgorithm() != null) {
-            if(updateResourceDTO.getAlgorithm().equals(resource.getAlgorithmType().toString())) {
-                if(updateResourceDTO.getNewSecret() != null && !updateResourceDTO.getNewSecret().isEmpty()) {
-                    // TODO: same alg but different secret
-                    secret = new Secret(updateResourceDTO.getNewSecret());
-                }
-                else {
-                    ExtractedResourceDTO extractedResourceDTO = getResourceAndExtractSecret(collectionName, resourceName);
-                    secret = new Secret(extractedResourceDTO.getMessage());
-                }
-            }
-            else {
-                if(updateResourceDTO.getNewSecret() != null) {
-                    if(updateResourceDTO.getNewSecret().isEmpty()) {
-                        // TODO: extract message and embed with new alg
-//                        Helper.saveFile(resource, resourceDTO.getImageBytes());
-//                        CoverImage coverImage = new CoverImage();
-//                        coverImage.readImage("./" + Constants.LOCAL_DIRECTORY_NAME.getValue() + "/" + resource.getImageName());
-//                        Algorithm algorithm = AlgorithmFactory.createAlgorithm(resource.getAlgorithmType());
-                        ExtractedResourceDTO extractedResourceDTO = getResourceAndExtractSecret(collectionName, resourceName);
-                        secret = new Secret(extractedResourceDTO.getMessage());
-//                        Helper.removeFile(resource);
-                    }
-                    else {
-                        //TODO: both alg and secret are different
-                        secret = new Secret(updateResourceDTO.getNewSecret());
-                    }
-                    resource.setAlgorithmType(AlgorithmType.valueOf(updateResourceDTO.getAlgorithm()));
-                }
+            if (collectionToMove == null)
+                throw new RuntimeException();
+
+            if(updateResourceDTO.getName() == null)
+                throw new RuntimeException();
+
+            for (Resource rsc : collectionToMove.getResources()) {
+                if (rsc.getDeletedAt() == null && rsc.getName().equals(updateResourceDTO.getName().trim()))
+                    throw new RuntimeException();
             }
 
-            if(updateResourceDTO.getDescription() != null)
-                resource.setDescription(updateResourceDTO.getDescription());
+            ResourceDTO resourceDTO = sftpService.getResource(
+                    userDetailsService.getCurrentlyLoggedUser().getEmail(),
+                    collection.getName(),
+                    resource
+            );
 
-            if(updateResourceDTO.getName() != null && !updateResourceDTO.getName().isEmpty()) {
-                List<Resource> resourceList = resourceRepository.getResourcesByCollectionId(collection.getId());
-                int i = 0;
-                while(i < resourceList.size() && !(resourceList.get(i).getName().trim().equals(updateResourceDTO.getName().trim()))) i++;
-                if(i == resourceList.size())
-                    resource.setName(updateResourceDTO.getName().trim());
+            String oldName = resource.getImageName();
+            resource.setName(updateResourceDTO.getName().trim());
+            Helper.saveFile(resource, resourceDTO.getImageBytes(), false);
+            sftpService.deleteFile(
+                    userDetailsService.getCurrentlyLoggedUser().getEmail(),
+                    collection,
+                    oldName
+            );
+            resource.setCollection(collectionToMove);
+            sftpService.uploadFile(
+                    userDetailsService.getCurrentlyLoggedUser().getEmail(),
+                    collectionToMove,
+                    resource
+            );
+            Helper.removeFile(resource, false);
+            List<Resource> resourceList = collection.getResources().stream().filter(rsc -> rsc.getDeletedAt() == null).toList();
+            if(resourceList.size() == 1) {
+                collection.setDeletedAt(LocalDateTime.now());
+                sftpService.deleteCollection(
+                        userDetailsService.getCurrentlyLoggedUser().getEmail(),
+                        collection
+                );
+                collectionRepository.save(collection);
+            }
+        }
+        else {
+            if(updateResourceDTO.getName() == null)
+                throw new RuntimeException();
+
+            if(!resource.getName().equals(updateResourceDTO.getName())) {
+                for (Resource rsc : collection.getResources()) {
+                    if (rsc.getDeletedAt() == null && rsc.getName().equals(updateResourceDTO.getName()))
+                        throw new RuntimeException();
+                }
             }
 
-            Helper.saveFile(resource, resourceDTO.getImageBytes());
+            ResourceDTO resourceDTO = sftpService.getResource(
+                    userDetailsService.getCurrentlyLoggedUser().getEmail(),
+                    collection.getName(),
+                    resource
+            );
 
-            sftpService.deleteFile(userDetailsService.getCurrentlyLoggedUser().getEmail(), collection, oldFilename);
+            String oldName = resource.getImageName();
+            resource.setName(updateResourceDTO.getName());
+            Helper.saveFile(resource, resourceDTO.getImageBytes(), false);
+            sftpService.deleteFile(
+                    userDetailsService.getCurrentlyLoggedUser().getEmail(),
+                    collection,
+                    oldName
+            );
+            sftpService.uploadFile(
+                    userDetailsService.getCurrentlyLoggedUser().getEmail(),
+                    collection,
+                    resource
+            );
+            Helper.removeFile(resource, false);
+        }
 
-            embedAndUploadOnSftpServer(collection, resource, secret.getRealSecret());
+        if(updateResourceDTO.getDescription() == null)
+            throw new RuntimeException();
 
-            sftpService.uploadFile(userDetailsService.getCurrentlyLoggedUser().getEmail(), collection, resource);
+        resource.setDescription(updateResourceDTO.getDescription());
+        resourceRepository.save(resource);
 
-            System.out.println(" HHHHHHEEEEEEEEEEEEEEERRRRRRRRRRRRRREEEEEEEEEEEEEEEEE ");
-            Helper.removeFile(resource);
-            resourceRepository.save(resource);
+        if(updateResourceDTO.getNewSecret() != null && !updateResourceDTO.getNewSecret().isEmpty()) {
+            embedAndUploadOnSftpServerOnUpdate(resource.getCollection(), resource, updateResourceDTO.getNewSecret());
         }
 
         return true;
     }
 
-    public boolean saveResource(String collectionName, String resourceName) {
+    private void embedAndUploadOnSftpServerOnUpdate(Collection collection, Resource resource, String newSecret) {
+        ResourceDTO resourceDTO = sftpService.getResource(
+                userDetailsService.getCurrentlyLoggedUser().getEmail(),
+                resource.getCollection().getName(),
+                resource
+        );
+        Helper.saveFile(resource, resourceDTO.getImageBytes(), true);
 
-        Collection collection = collectionRepository.getCollectionByNameAndUserId(collectionName, userDetailsService.getCurrentlyLoggedUser().getId());
+        Secret secret = new Secret(newSecret);
+        CoverImage coverImage = new CoverImage();
+        coverImage.readImage(Constants.LOCAL_DIRECTORY_NAME.getValue() + "/" + Constants.HEAD_FILE_NAME.getValue() + resource.getImageName());
+        Algorithm algorithm = AlgorithmFactory.createAlgorithm(resource.getAlgorithm().getName());
+        algorithm.embed(coverImage, secret);
+        sftpService.deleteFile(
+                userDetailsService.getCurrentlyLoggedUser().getEmail(),
+                resource.getCollection(),
+                resource.getImageName()
+        );
+        coverImage.save(Constants.LOCAL_DIRECTORY_NAME.getValue() + "/" + resource.getImageName());
+        sftpService.uploadFile(userDetailsService.getCurrentlyLoggedUser().getEmail(), collection, resource);
+        Helper.removeFile(resource, true);
+    }
+
+
+    @Transactional
+    public boolean updateCollection(String collectionName, UpdateCollectionDTO updateCollectionDTO) {
+
+        Collection collection = collectionRepository.getCollectionByNameAndUserIdAndDeletedAtIsNull(collectionName, userDetailsService.getCurrentlyLoggedUser().getId());
+
         if(collection == null)
             throw new RuntimeException();
-        Resource resource = resourceRepository.getResourceByNameAndCollectionId(resourceName, collection.getId());
 
-        if(resource == null)
+        if(updateCollectionDTO == null) return true;
+        if(updateCollectionDTO.getName() == null) return true;
+
+        Collection collectionExist = collectionRepository.getCollectionByNameAndUserIdAndDeletedAtIsNull(updateCollectionDTO.getName(), userDetailsService.getCurrentlyLoggedUser().getId());
+
+        if(collectionExist != null && collection.getName().equals(collectionExist.getName())) {
+            if(updateCollectionDTO.getDescription() != null) {
+                collection.setCollectionDescription(updateCollectionDTO.getDescription());
+                collectionRepository.save(collection);
+            }
+            return true;
+        }
+
+        if(collectionExist != null)
             throw new RuntimeException();
 
+        String oldName = collection.getName();
+        collection.setName(updateCollectionDTO.getName());
+        sftpService.updateCollectionName(userDetailsService.getCurrentlyLoggedUser().getEmail(), oldName, updateCollectionDTO.getName());
 
+        if(updateCollectionDTO.getDescription() != null)
+            collection.setCollectionDescription(updateCollectionDTO.getDescription());
 
-        resource.setSaved(!resource.isSaved());
-        resourceRepository.save(resource);
-        return resource.isSaved();
+        collectionRepository.save(collection);
+        return true;
     }
 
     public ResourceDTO getResourceInfo(String collectionName, String resourceName) {
 
-        Collection collection = this.collectionRepository.getCollectionByNameAndUserId(collectionName, userDetailsService.getCurrentlyLoggedUser().getId());
+        Collection collection = this.collectionRepository.getCollectionByNameAndUserIdAndDeletedAtIsNull(
+                collectionName, userDetailsService.getCurrentlyLoggedUser().getId()
+        );
 
         if(collection == null) {
             throw new RuntimeException();
         }
 
-        Resource resource = this.resourceRepository.getResourceByNameAndCollectionId(resourceName, collection.getId());
+        Resource resource = this.resourceRepository.getResourceByNameAndCollectionIdAndDeletedAtIsNull(resourceName, collection.getId());
 
         if(resource == null) {
             throw new RuntimeException();
@@ -299,9 +425,10 @@ public class ResourceService {
                 .type(resource.getImageType().toString())
                 .name(resource.getName())
                 .description(resource.getDescription())
-                .algorithm(resource.getAlgorithmType().toString())
+                .algorithm(resource.getAlgorithm().getName())
+                .createdAt(resource.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy MMM dd")))
+                .modifiedAt(resource.getModifiedAt() != null? resource.getModifiedAt().format(DateTimeFormatter.ofPattern("yyyy MMM dd")) : null)
                 .imageBytes("")
-                .isSaved(resource.isSaved())
                 .build();
     }
 
@@ -309,23 +436,25 @@ public class ResourceService {
         if(collectionName == null || resourceName == null)
             throw new RuntimeException();
 
-        Collection collection = collectionRepository.getCollectionByNameAndUserId(collectionName, userDetailsService.getCurrentlyLoggedUser().getId());
+        Collection collection = collectionRepository.getCollectionByNameAndUserIdAndDeletedAtIsNull(collectionName, userDetailsService.getCurrentlyLoggedUser().getId());
 
         if(collection == null)
             throw new RuntimeException();
 
-        Resource resource = resourceRepository.getResourceByNameAndCollectionId(resourceName, collection.getId());
+        Resource resource = resourceRepository.getResourceByNameAndCollectionIdAndDeletedAtIsNull(resourceName, collection.getId());
 
         if(resource == null)
             throw new RuntimeException();
 
-        List<Resource> resources = resourceRepository.getResourcesByCollectionId(collection.getId());
-
-        resourceRepository.delete(resource);
+        resource.setDeletedAt(LocalDateTime.now());
+        resourceRepository.save(resource);
         sftpService.deleteFile(userDetailsService.getCurrentlyLoggedUser().getEmail(), collection, resource.getImageName());
 
-        if(resources.size() == 1) {
-            collectionRepository.delete(collection);
+
+        List<Resource> resources = resourceRepository.getResourcesByCollectionId(collection.getId()).stream().filter(rsc -> rsc.getDeletedAt() == null).toList();
+        if(resources.isEmpty()) {
+            collection.setDeletedAt(LocalDateTime.now());
+            collectionRepository.save(collection);
             sftpService.deleteCollection(userDetailsService.getCurrentlyLoggedUser().getEmail(), collection);
         }
 
@@ -336,22 +465,63 @@ public class ResourceService {
         if(collectionName == null)
             throw new RuntimeException();
 
-        Collection collection = collectionRepository.getCollectionByNameAndUserId(collectionName, userDetailsService.getCurrentlyLoggedUser().getId());
+        Collection collection = collectionRepository.getCollectionByNameAndUserIdAndDeletedAtIsNull(collectionName, userDetailsService.getCurrentlyLoggedUser().getId());
 
         if(collection == null)
             throw new RuntimeException();
 
-        List<Resource> resources = resourceRepository.getResourcesByCollectionId(collection.getId());
+        List<Resource> resources = resourceRepository.getResourcesByCollectionId(collection.getId()).stream().filter(rsc -> rsc.getDeletedAt() == null).toList();
 
         for(Resource resource : resources) {
             sftpService.deleteFile(userDetailsService.getCurrentlyLoggedUser().getEmail(), collection, resource.getImageName());
-            resourceRepository.delete(resource);
+            resource.setDeletedAt(LocalDateTime.now());
+            resourceRepository.save(resource);
         }
 
-        collectionRepository.delete(collection);
+        collection.setDeletedAt(LocalDateTime.now());
+        collectionRepository.save(collection);
         sftpService.deleteCollection(userDetailsService.getCurrentlyLoggedUser().getEmail(), collection);
 
         return true;
     }
 
+    public ImageBytes getImage(String collectionName, String resourceName) {
+        if(collectionName == null || resourceName == null)
+            throw new RuntimeException();
+        Collection collection = collectionRepository.getCollectionByNameAndUserIdAndDeletedAtIsNull(
+                collectionName,
+                userDetailsService.getCurrentlyLoggedUser().getId()
+        );
+        if(collection == null)
+            throw new RuntimeException();
+
+        Resource resource = resourceRepository.getResourceByNameAndCollectionIdAndDeletedAtIsNull(
+                resourceName,
+                collection.getId()
+        );
+
+        if(resource == null)
+            throw new RuntimeException();
+
+        ResourceDTO resourceDTO = sftpService.getResource(
+                userDetailsService.getCurrentlyLoggedUser().getEmail(),
+                collection.getName(),
+                resource
+        );
+
+        return ImageBytes.builder()
+                .imageBytes(resourceDTO.getImageBytes())
+                .build();
+    }
+
+    public List<String> getAllAlgs() {
+        List<String> algorithms = new ArrayList<>();
+        List<AlgorithmEntity> algorithmEntities = algorithmRepository.findAll();
+
+        for(AlgorithmEntity algorithm : algorithmEntities)
+            if(algorithm.getDeletedAt() == null)
+                algorithms.add(algorithm.getName());
+
+        return algorithms;
+    }
 }

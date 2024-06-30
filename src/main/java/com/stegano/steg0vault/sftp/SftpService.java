@@ -13,6 +13,7 @@ import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
 import org.springframework.integration.sftp.session.SftpSession;
 import org.springframework.stereotype.Service;
 import java.io.*;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 
@@ -69,23 +70,52 @@ public class SftpService {
         }
     }
 
+    public void uploadEncryptionKey(String localFilename, String userDirectory) {
+        SftpSession session = sftpFactory().getSession();
+        try {
+            File newFile = new File(localFilename);
+            InputStream in = new FileInputStream(newFile);
+            session.write(in, Constants.SFTP_SERVER_REMOTE_DIRECTORY_NAME.getValue() + "/" + userDirectory + "/key.txt");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void getEncryptionKey(String userDirectory) {
+        SftpSession session = sftpFactory().getSession();
+        try {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            session.read("upload/" + userDirectory + "/key.txt", outputStream);
+
+            FileWriter myWriter = new FileWriter("./currentUserResources" + "/encryption.txt");
+            myWriter.write(outputStream.toString());
+            myWriter.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public ArrayList<ResourceDTO> getResources(String userEmail, String collectionName, ArrayList<Resource> resources) {
         SftpSession session = sftpFactory().getSession();
         ArrayList<ResourceDTO> returnedResources = new ArrayList<>();
         try {
             for (Resource rsc: resources) {
-                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                session.read("upload/" + userEmail + "/" + collectionName + "/" + rsc.getImageName(), outputStream);
-                returnedResources.add(
-                        ResourceDTO.builder()
-                                .name(rsc.getName())
-                                .description(rsc.getDescription())
-                                .algorithm(rsc.getAlgorithmType().toString())
-                                .type(rsc.getImageType().toString())
-                                .isSaved(rsc.isSaved())
-                                .imageBytes(Helper.addHeaderBase64(Base64.getEncoder().encodeToString(outputStream.toByteArray()), rsc))
-                                .build()
-                );
+                if(rsc.getDeletedAt() == null) {
+                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                    session.read("upload/" + userEmail + "/" + collectionName + "/" + rsc.getImageName(), outputStream);
+                    returnedResources.add(
+                            ResourceDTO.builder()
+                                    .name(rsc.getName())
+                                    .description(rsc.getDescription())
+                                    .algorithm(rsc.getAlgorithm().getName())
+                                    .type(rsc.getImageType().toString())
+                                    .imageBytes("")
+                                    .id(rsc.getId())
+                                    .createdAt(rsc.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy MMM dd")))
+                                    .modifiedAt(rsc.getModifiedAt() != null? rsc.getModifiedAt().format(DateTimeFormatter.ofPattern("yyyy MMM dd")) : null)
+                                    .build()
+                    );
+                }
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -102,9 +132,8 @@ public class SftpService {
             return ResourceDTO.builder()
                     .name(resource.getName())
                     .description(resource.getDescription())
-                    .algorithm(resource.getAlgorithmType().toString())
+                    .algorithm(resource.getAlgorithm().getName())
                     .type(resource.getImageType().toString())
-                    .isSaved(resource.isSaved())
                     .imageBytes(Helper.addHeaderBase64(Base64.getEncoder().encodeToString(outputStream.toByteArray()), resource))
                     .build();
         } catch (IOException e) {
@@ -121,11 +150,40 @@ public class SftpService {
         }
     }
 
+    public void updateCollectionName(String userDirectory, String oldName, String newName) {
+        SftpSession session = sftpFactory().getSession();
+        try {
+            session.rename(Constants.SFTP_SERVER_REMOTE_DIRECTORY_NAME.getValue() + "/" + userDirectory + "/" + oldName,
+                    Constants.SFTP_SERVER_REMOTE_DIRECTORY_NAME.getValue() + "/" + userDirectory + "/" + newName);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void updateResourceName(String userDirectory, String collectionName, String oldName, String newName) {
+        SftpSession session = sftpFactory().getSession();
+        try {
+            session.rename(Constants.SFTP_SERVER_REMOTE_DIRECTORY_NAME.getValue() + "/" + userDirectory + "/" + collectionName + "/" + oldName,
+                    Constants.SFTP_SERVER_REMOTE_DIRECTORY_NAME.getValue() + "/" + userDirectory + "/" + collectionName + "/" + newName);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void deleteCollection(String userDirectory, Collection collection) {
         SftpSession session = sftpFactory().getSession();
         try {
-//            session.remove(Constants.SFTP_SERVER_REMOTE_DIRECTORY_NAME.getValue() + "/" + userDirectory + "/" + collection.getName() + "/" + filename);
             session.rmdir(Constants.SFTP_SERVER_REMOTE_DIRECTORY_NAME.getValue() + "/" + userDirectory + "/" + collection.getName());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void deleteUserSpace(String userDirectory) {
+        SftpSession session = sftpFactory().getSession();
+        try {
+            session.remove(Constants.SFTP_SERVER_REMOTE_DIRECTORY_NAME.getValue() + "/" + userDirectory + "/" + "key.txt");
+            session.rmdir(Constants.SFTP_SERVER_REMOTE_DIRECTORY_NAME.getValue() + "/" + userDirectory);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

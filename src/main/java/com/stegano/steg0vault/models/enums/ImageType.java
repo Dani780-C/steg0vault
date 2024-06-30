@@ -1,12 +1,37 @@
 package com.stegano.steg0vault.models.enums;
 
 public enum ImageType {
-//     BMP, PNG, PPM, PNM, TIF, TIFF
-    PNG, BMP, TIFF, TIF, PNM, PPM;
-//    public static boolean valid(String type) {
-//        return type.equals("image/png") || ;
-//    }
+    PNG, BMP, TIFF, TIF, PNM, PPM, WEBP, GIF, AVIF;
+
     public static ImageType convert(String type) {
-        return PNG;
+        switch (type.trim()) {
+            case "image/tiff" -> {
+                return PNG;
+            }
+            case "image/avif" -> {
+                return AVIF;
+            }
+            case "image/gif" -> {
+                return GIF;
+            }
+            case "image/webp" -> {
+                return WEBP;
+            }
+            case "image/tif" -> {
+                return TIF;
+            }
+            case "image/bmp" -> {
+                return PNG;
+            }
+            case "image/pnm" -> {
+                return PNM;
+            }
+            case "image/ppm" -> {
+                return PPM;
+            }
+            default -> {
+                return PNG;
+            }
+        }
     }
 }

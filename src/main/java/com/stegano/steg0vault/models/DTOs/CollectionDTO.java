@@ -12,6 +12,8 @@ import lombok.ToString;
 public class CollectionDTO {
     private String name;
     private String description;
+    private String createdAt;
+    private String modifiedAt;
     public boolean valid() {
         return name != null && description != null && !name.isEmpty();
     }

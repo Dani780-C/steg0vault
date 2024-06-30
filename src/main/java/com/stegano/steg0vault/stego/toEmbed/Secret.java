@@ -1,5 +1,6 @@
 package com.stegano.steg0vault.stego.toEmbed;
 
+import com.stegano.steg0vault.security.Encryption.AES;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -10,8 +11,9 @@ public class Secret {
     private int index;
     private char chr;
     private int rollback;
-
+    private AES aes = new AES();
     public Secret() {
+        aes.loadKeyAndIV();
         secret = "";
         index = 0;
         rollback = index;
@@ -26,7 +28,10 @@ public class Secret {
     }
 
     public Secret(String secret) {
-        this.secret = secret.length() + "." + secret;
+        aes.loadKeyAndIV();
+        String encryptedSecret = aes.encrypt(secret);
+        System.out.println(encryptedSecret.length());
+        this.secret = encryptedSecret.length() + "." + aes.encrypt(secret);
         this.index = 0;
     }
     public int length() { // The secret format to embed: "header.message" [header is the length of the message]
@@ -39,6 +44,16 @@ public class Secret {
             for(int i = 0; i < index % 8; i++)
                 chr /= 2;
             index += 1;
+            return chr % 2;
+        }
+        return 0;
+    }
+
+    public int getCurrentBitButDontMoveToNext() {
+        if(hasToEmbed()) {
+            int chr = secret.charAt(index / 8);
+            for(int i = 0; i < index % 8; i++)
+                chr /= 2;
             return chr % 2;
         }
         return 0;
@@ -76,4 +91,14 @@ public class Secret {
             return "There is no embedded message!";
         }
     }
+
+    public String getDecryptedMessage() {
+        try {
+            int len = Integer.parseInt(secret.split("\\.")[0]);
+            return aes.decrypt(secret.substring(String.valueOf(len).length() + 1));
+        } catch (NumberFormatException e) {
+            return "There is no embedded message!";
+        }
+    }
+
 }

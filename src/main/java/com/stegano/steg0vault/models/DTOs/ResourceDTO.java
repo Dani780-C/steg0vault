@@ -1,7 +1,5 @@
 package com.stegano.steg0vault.models.DTOs;
 
-import com.stegano.steg0vault.models.enums.AlgorithmType;
-import com.stegano.steg0vault.models.enums.ImageType;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -12,17 +10,19 @@ import lombok.ToString;
 @Builder
 @ToString
 public class ResourceDTO {
+    private Long id;
     private String name;
     private String type;
     private String description;
     private String algorithm;
-    private boolean isSaved;
     private String imageBytes;
+    private String createdAt;
+    private String modifiedAt;
     public boolean valid() {
         return name != null && !name.isEmpty() &&
                type != null && !type.isEmpty() &&
                description != null &&
-               algorithm != null && !algorithm.isEmpty() && AlgorithmType.valid(algorithm) &&
+               algorithm != null && !algorithm.isEmpty() &&
                imageBytes != null && !imageBytes.isEmpty();
     }
 }
